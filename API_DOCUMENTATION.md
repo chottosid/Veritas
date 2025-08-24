@@ -91,8 +91,7 @@
       "id": "complaint_id",
       "title": "Theft Report",
       "description": "My bike was stolen",
-      "location": "Dhanmondi, Dhaka",
-      "area": "Dhanmondi",
+      "area": "Dhanmondi Police Station",
       "status": "UNDER_INVESTIGATION",
       "assignedOfficerIds": [
         {
@@ -147,9 +146,8 @@
 **Request (form-data):**
 - `title`: "Theft Report"
 - `description`: "My bike was stolen from parking"
-- `location`: "Dhanmondi, Dhaka"
-- `area`: "Dhanmondi"
-- `attachments`: [file1.jpg, file2.pdf] (optional)
+- `area`: "Dhanmondi Police Station"
+- `attachments`: [file1.jpg, file2.pdf] (optional, max 5 files)
 
 **Response:**
 ```json
@@ -160,8 +158,7 @@
     "id": "complaint_id",
     "title": "Theft Report",
     "description": "My bike was stolen from parking",
-    "location": "Dhanmondi, Dhaka",
-    "area": "Dhanmondi",
+    "area": "Dhanmondi Police Station",
     "status": "PENDING",
     "complainantId": {
       "name": "John Doe",
@@ -190,8 +187,7 @@
     "id": "complaint_id",
     "title": "Theft Report",
     "description": "My bike was stolen",
-    "location": "Dhanmondi, Dhaka",
-    "area": "Dhanmondi",
+    "area": "Dhanmondi Police Station",
     "status": "UNDER_INVESTIGATION",
     "complainantId": {
       "name": "John Doe",
@@ -309,7 +305,7 @@
       "id": "complaint_id",
       "title": "Theft Report",
       "description": "Bike stolen from parking",
-      "location": "Dhanmondi, Dhaka",
+      "area": "Dhanmondi Police Station",
       "status": "UNDER_INVESTIGATION",
       "complainantId": {
         "name": "John Doe",
@@ -343,7 +339,7 @@
     "complaintId": {
       "title": "Theft Report",
       "description": "Bike stolen from parking",
-      "location": "Dhanmondi, Dhaka"
+      "area": "Dhanmondi Police Station"
     },
     "registeredBy": {
       "name": "Officer Smith",
@@ -481,7 +477,7 @@
       "complaintId": {
         "title": "Theft Report",
         "description": "Bike stolen from parking",
-        "location": "Dhanmondi, Dhaka",
+        "area": "Dhanmondi Police Station",
         "complainantId": {
           "name": "John Doe",
           "nid": "1234567890123",

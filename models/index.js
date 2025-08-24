@@ -81,7 +81,6 @@ const complaintSchema = new Schema(
     },
     title: { type: String, required: true },
     description: { type: String, required: true },
-    location: { type: String, required: true },
     area: { type: String, required: true },
     assignedOfficerIds: [{ type: Schema.Types.ObjectId, ref: "Police" }],
     status: {

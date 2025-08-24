@@ -189,7 +189,7 @@ router.get("/firs", authenticateToken, async (req, res) => {
     const judgeId = req.user.id;
 
     const firs = await FIR.find({ submittedToJudge: judgeId })
-      .populate("complaintId", "title description location complainantId")
+      .populate("complaintId", "title description area complainantId")
       .populate("registeredBy", "name pid rank station")
       .populate({
         path: "complaintId",

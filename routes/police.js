@@ -308,7 +308,7 @@ router.post(
       // Populate the response
       await fir.populate("registeredBy", "name pid rank station");
       await fir.populate("submittedToJudge", "name courtName");
-      await fir.populate("complaintId", "title description location");
+      await fir.populate("complaintId", "title description area");
 
       res.status(201).json({
         success: true,

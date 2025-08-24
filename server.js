@@ -2,25 +2,12 @@ import "dotenv/config";
 import express from "express";
 import { connectDB, isDBConnected } from "./config/database.js";
 import corsMiddleware from "./middleware/cors.js";
-import { authenticateToken, authenticateRole } from "./middleware/auth.js";
 
 // Import routes
 import citizenRoutes from "./routes/citizens.js";
 import policeRoutes from "./routes/police.js";
 import judgeRoutes from "./routes/judges.js";
 import lawyerRoutes from "./routes/lawyers.js";
-
-// Import models to ensure they are registered
-import {
-  Citizen,
-  Police,
-  Judge,
-  Lawyer,
-  Complaint,
-  FIR,
-  LawyerRequest,
-  Case,
-} from "./models/index.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;

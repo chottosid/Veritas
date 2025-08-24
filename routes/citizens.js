@@ -250,7 +250,7 @@ router.post(
   async (req, res) => {
     try {
       const complainantId = req.user.id; // Get from JWT token
-      const { title, description, location, area } = req.body;
+      const { title, description, area } = req.body;
 
       // Verify citizen exists
       const citizen = await Citizen.findById(complainantId);
@@ -287,7 +287,6 @@ router.post(
         complainantId,
         title,
         description,
-        location,
         area,
         attachments,
         status: "PENDING",
