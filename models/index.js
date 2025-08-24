@@ -10,6 +10,7 @@ const citizenSchema = new Schema(
     phone: { type: String, unique: true, sparse: true },
     email: { type: String, unique: true, sparse: true },
     nid: { type: String, unique: true, sparse: true, required: true },
+    password: { type: String, required: true }, // Added password field
   },
   {
     timestamps: true,
@@ -28,6 +29,7 @@ const policeSchema = new Schema(
     rank: { type: String, required: true },
     station: { type: String, required: true },
     isOC: { type: Boolean, default: false }, // Officer in Charge
+    password: { type: String, required: true },
   },
   {
     timestamps: true,
@@ -45,6 +47,7 @@ const judgeSchema = new Schema(
     courtName: { type: String, required: true },
     rank: { type: String, required: true },
     jid: { type: String, required: true, unique: true, sparse: true },
+    password: { type: String, required: true },
   },
   {
     timestamps: true,
@@ -61,6 +64,7 @@ const lawyerSchema = new Schema(
     email: { type: String, unique: true, sparse: true },
     firmName: { type: String },
     bid: { type: String, required: true, unique: true, sparse: true },
+    password: { type: String, required: true },
   },
   {
     timestamps: true,
@@ -78,18 +82,11 @@ const complaintSchema = new Schema(
     title: { type: String, required: true },
     description: { type: String, required: true },
     location: { type: String, required: true },
-    area: { type: String, required: true }, // Area of occurrence for OC assignment
-    assignedOCId: { type: Schema.Types.ObjectId, ref: "Police" }, // Assigned OC
-    assignedOfficerIds: [{ type: Schema.Types.ObjectId, ref: "Police" }], // Officers assigned by OC
+    area: { type: String, required: true },
+    assignedOfficerIds: [{ type: Schema.Types.ObjectId, ref: "Police" }],
     status: {
       type: String,
-      enum: [
-        "PENDING",
-        "ASSIGNED_TO_OC",
-        "UNDER_INVESTIGATION",
-        "FIR_REGISTERED",
-        "CLOSED",
-      ],
+      enum: ["PENDING", "UNDER_INVESTIGATION", "FIR_REGISTERED", "CLOSED"],
       default: "PENDING",
     },
     attachments: [
@@ -122,7 +119,15 @@ const firSchema = new Schema(
       ref: "Police",
       required: true,
     },
-    ipfsHash: { type: String }, // IPFS hash for FIR document
+    submittedToJudge: { type: Schema.Types.ObjectId, ref: "Judge" },
+    attachments: [
+      {
+        fileName: String,
+        ipfsHash: String,
+        fileSize: Number,
+        uploadedAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   {
     timestamps: true,

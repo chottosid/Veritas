@@ -6,8 +6,9 @@ import { authenticateToken, authenticateRole } from "./middleware/auth.js";
 
 // Import routes
 import citizenRoutes from "./routes/citizens.js";
-import complaintRoutes from "./routes/complaints.js";
 import policeRoutes from "./routes/police.js";
+import judgeRoutes from "./routes/judges.js";
+import lawyerRoutes from "./routes/lawyers.js";
 
 // Import models to ensure they are registered
 import {
@@ -48,8 +49,9 @@ app.get("/health", (req, res) => {
 
 // API Routes
 app.use("/api/citizens", citizenRoutes);
-app.use("/api/complaints", complaintRoutes);
 app.use("/api/police", policeRoutes);
+app.use("/api/judges", judgeRoutes);
+app.use("/api/lawyers", lawyerRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
