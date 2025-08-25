@@ -1,9 +1,16 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
-import { Judge, FIR, Case, Notification, CaseProceeding } from "../models/index.js";
+import {
+  Judge,
+  FIR,
+  Case,
+  Notification,
+  CaseProceeding,
+} from "../models/index.js";
 import { authenticateToken } from "../middleware/auth.js";
 import { appendCaseProceeding } from "../utils/ipfs.js";
+import { emitCaseCreated, emitCaseUpdated } from "../utils/blockchain.js";
 
 const router = express.Router();
 
@@ -266,6 +273,13 @@ router.post("/firs/:firId/case", authenticateToken, async (req, res) => {
       metadata: { firId },
     });
 
+    // Emit chain event (non-blocking)
+    emitCaseCreated({
+      firId: newCase.firId,
+      caseId: newCase._id,
+      caseNumber: newCase.caseNumber,
+    }).catch(() => {});
+
     // Populate the response
     await newCase.populate("firId");
     await newCase.populate("assignedJudgeId", "name courtName");
@@ -402,6 +416,13 @@ router.post("/cases/:caseId/hearing", authenticateToken, async (req, res) => {
       metadata: { hearingDate: new Date(hearingDate) },
     });
 
+    // Emit chain event (non-blocking)
+    emitCaseUpdated({
+      caseId: caseData._id,
+      updateType: "HEARING_SCHEDULED",
+      description: `Hearing scheduled on ${hearingDate}`,
+    }).catch(() => {});
+
     // Populate the response
     await caseData.populate("firId");
     await caseData.populate("assignedJudgeId", "name courtName");
@@ -455,6 +476,13 @@ router.post("/cases/:caseId/close", authenticateToken, async (req, res) => {
       description: `Case closed with verdict`,
       metadata: { verdict },
     });
+
+    // Emit chain event (non-blocking)
+    emitCaseUpdated({
+      caseId: caseData._id,
+      updateType: "JUDGMENT",
+      description: `Case closed with verdict`,
+    }).catch(() => {});
 
     // Populate the response
     await caseData.populate("firId");
@@ -524,42 +552,46 @@ router.get("/notifications", authenticateToken, async (req, res) => {
 });
 
 // Mark notification as read
-router.put("/notifications/:notificationId/read", authenticateToken, async (req, res) => {
-  try {
-    const { notificationId } = req.params;
-    const judgeId = req.user.id;
+router.put(
+  "/notifications/:notificationId/read",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { notificationId } = req.params;
+      const judgeId = req.user.id;
 
-    const notification = await Notification.findOneAndUpdate(
-      {
-        _id: notificationId,
-        recipientId: judgeId,
-        recipientType: "JUDGE",
-      },
-      { isRead: true },
-      { new: true }
-    );
+      const notification = await Notification.findOneAndUpdate(
+        {
+          _id: notificationId,
+          recipientId: judgeId,
+          recipientType: "JUDGE",
+        },
+        { isRead: true },
+        { new: true }
+      );
 
-    if (!notification) {
-      return res.status(404).json({
+      if (!notification) {
+        return res.status(404).json({
+          success: false,
+          message: "Notification not found",
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Notification marked as read",
+        data: notification,
+      });
+    } catch (error) {
+      console.error("Mark notification read error:", error);
+      res.status(500).json({
         success: false,
-        message: "Notification not found",
+        message: "Failed to mark notification as read",
+        error: error.message,
       });
     }
-
-    res.json({
-      success: true,
-      message: "Notification marked as read",
-      data: notification,
-    });
-  } catch (error) {
-    console.error("Mark notification read error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to mark notification as read",
-      error: error.message,
-    });
   }
-});
+);
 
 // Mark all notifications as read
 router.put("/notifications/read-all", authenticateToken, async (req, res) => {
@@ -591,25 +623,40 @@ router.put("/notifications/read-all", authenticateToken, async (req, res) => {
 });
 
 // Get proceedings for a case (judge view)
-router.get("/cases/:caseId/proceedings", authenticateToken, async (req, res) => {
-  try {
-    const { caseId } = req.params;
-    const judgeId = req.user.id;
+router.get(
+  "/cases/:caseId/proceedings",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { caseId } = req.params;
+      const judgeId = req.user.id;
 
-    // Ensure judge has access to this case
-    const caseData = await Case.findOne({ _id: caseId, assignedJudgeId: judgeId });
-    if (!caseData) {
-      return res.status(404).json({ success: false, message: "Case not found or not assigned to you" });
+      // Ensure judge has access to this case
+      const caseData = await Case.findOne({
+        _id: caseId,
+        assignedJudgeId: judgeId,
+      });
+      if (!caseData) {
+        return res.status(404).json({
+          success: false,
+          message: "Case not found or not assigned to you",
+        });
+      }
+
+      const proceedings = await CaseProceeding.find({ caseId }).sort({
+        createdAt: -1,
+      });
+
+      res.json({ success: true, data: proceedings });
+    } catch (error) {
+      console.error("Get case proceedings error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to get case proceedings",
+        error: error.message,
+      });
     }
-
-    const proceedings = await CaseProceeding.find({ caseId })
-      .sort({ createdAt: -1 });
-
-    res.json({ success: true, data: proceedings });
-  } catch (error) {
-    console.error("Get case proceedings error:", error);
-    res.status(500).json({ success: false, message: "Failed to get case proceedings", error: error.message });
   }
-});
+);
 
 export default router;

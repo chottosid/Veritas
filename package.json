@@ -6,7 +6,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "chain:compile": "cd blockchain && npx hardhat compile",
+    "chain:deploy:amoy": "cd blockchain && node scripts/deploy.js"
   },
   "keywords": [],
   "author": "",
@@ -17,6 +19,7 @@
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
+    "ethers": "^6.15.0",
     "express": "^4.19.2",
     "form-data": "^4.0.4",
     "jsonwebtoken": "^9.0.2",
