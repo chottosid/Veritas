@@ -10,6 +10,8 @@ import {
   FIR,
   Notification,
   CaseProceeding,
+  Lawyer,
+  LawyerRequest,
 } from "../models/index.js";
 import { authenticateToken } from "../middleware/auth.js";
 import { uploadToIPFS } from "../utils/ipfs.js";

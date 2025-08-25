@@ -15,6 +15,9 @@ let wallet = null;
 let contract = null;
 let abi = null;
 let contractAddress = process.env.CONTRACT_ADDRESS || "";
+const TEST_MODE =
+  String(process.env.BLOCKCHAIN_TEST_MODE).toLowerCase() === "true" ||
+  String(process.env.NODE_ENV).toLowerCase() === "test";
 
 function loadAbi() {
   try {
@@ -30,6 +33,13 @@ function loadAbi() {
 
 function initContract() {
   try {
+    if (TEST_MODE) {
+      // Explicitly disable chain connections in test mode
+      provider = null;
+      wallet = null;
+      contract = null;
+      return;
+    }
     if (!process.env.AMOY_RPC_URL || !process.env.PRIVATE_KEY) return;
     if (!abi) loadAbi();
     if (!abi) return;
@@ -58,6 +68,13 @@ initContract();
 
 async function safeCall(promiseFactory) {
   try {
+    if (TEST_MODE) {
+      // Return a deterministic-looking mock hash to satisfy clients
+      const mockHash = ethers.id(
+        `TEST:${Date.now()}:${Math.random().toString(36).slice(2)}`
+      );
+      return { ok: true, skipped: true, hash: mockHash };
+    }
     if (!contract) return { ok: false, skipped: true };
     const tx = await promiseFactory();
     // Don't await confirmations to avoid slowing API; still wait for hash
@@ -121,5 +138,9 @@ export async function emitCaseUpdated({ caseId, updateType, description }) {
 }
 
 export function isBlockchainReady() {
-  return Boolean(contract);
+  return Boolean(contract) && !TEST_MODE;
+}
+
+export function isBlockchainTestMode() {
+  return TEST_MODE;
 }
