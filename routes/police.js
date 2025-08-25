@@ -2,9 +2,9 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import multer from "multer";
-import { Police, Complaint, FIR, Judge } from "../models/index.js";
+import { Police, Complaint, FIR, Judge, Notification, Case, CaseProceeding } from "../models/index.js";
 import { authenticateToken } from "../middleware/auth.js";
-import { uploadToIPFS } from "../utils/ipfs.js";
+import { uploadToIPFS, appendCaseProceeding } from "../utils/ipfs.js";
 
 const router = express.Router();
 
@@ -340,6 +340,469 @@ router.get("/judges", authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to get judges",
+      error: error.message,
+    });
+  }
+});
+
+// =============== OC FUNCTIONALITY ===============
+
+// Get pending complaints for OC (auto-allocated by area)
+router.get("/oc/complaints", authenticateToken, async (req, res) => {
+  try {
+    const policeId = req.user.id;
+
+    // Verify the user is an OC
+    const police = await Police.findById(policeId);
+    if (!police || !police.isOC) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Only OCs can view area complaints.",
+      });
+    }
+
+    // Get complaints from the OC's area that are pending assignment
+    const complaints = await Complaint.find({
+      area: police.station,
+      status: "PENDING",
+      assignedOfficerIds: { $size: 0 }, // No officers assigned yet
+    })
+      .populate("complainantId", "name nid phone")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: complaints,
+    });
+  } catch (error) {
+    console.error("Get OC complaints error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get area complaints",
+      error: error.message,
+    });
+  }
+});
+
+// Assign investigating officer to complaint (OC only)
+router.post("/oc/complaints/:complaintId/assign", authenticateToken, async (req, res) => {
+  try {
+    const { complaintId } = req.params;
+    const { officerId } = req.body;
+    const ocId = req.user.id;
+
+    // Verify the user is an OC
+    const oc = await Police.findById(ocId);
+    if (!oc || !oc.isOC) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Only OCs can assign officers.",
+      });
+    }
+
+    // Verify the complaint exists and is in OC's area
+    const complaint = await Complaint.findOne({
+      _id: complaintId,
+      area: oc.station,
+      status: "PENDING",
+    });
+
+    if (!complaint) {
+      return res.status(404).json({
+        success: false,
+        message: "Complaint not found or not in your jurisdiction",
+      });
+    }
+
+    // Verify the officer exists and is from the same station
+    const officer = await Police.findOne({
+      _id: officerId,
+      station: oc.station,
+    });
+
+    if (!officer) {
+      return res.status(404).json({
+        success: false,
+        message: "Officer not found or not from your station",
+      });
+    }
+
+    // Assign officer to complaint
+    complaint.assignedOfficerIds.push(officerId);
+    complaint.status = "UNDER_INVESTIGATION";
+    await complaint.save();
+
+    // Populate the response
+    await complaint.populate("complainantId", "name nid phone");
+    await complaint.populate("assignedOfficerIds", "name rank station");
+
+    res.json({
+      success: true,
+      message: "Officer assigned successfully",
+      data: complaint,
+    });
+  } catch (error) {
+    console.error("Assign officer error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to assign officer",
+      error: error.message,
+    });
+  }
+});
+
+// Get all officers in OC's station
+router.get("/oc/officers", authenticateToken, async (req, res) => {
+  try {
+    const ocId = req.user.id;
+
+    // Verify the user is an OC
+    const oc = await Police.findById(ocId);
+    if (!oc || !oc.isOC) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Only OCs can view station officers.",
+      });
+    }
+
+    // Get all officers from the same station (excluding OCs)
+    const officers = await Police.find({
+      station: oc.station,
+      isOC: false,
+    }).select("name rank pid");
+
+    res.json({
+      success: true,
+      data: officers,
+    });
+  } catch (error) {
+    console.error("Get station officers error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get station officers",
+      error: error.message,
+    });
+  }
+});
+
+// =============== INVESTIGATION MANAGEMENT ===============
+
+// Submit additional evidence for complaint
+router.post(
+  "/complaints/:complaintId/evidence",
+  authenticateToken,
+  upload.array("evidence", 5),
+  async (req, res) => {
+    try {
+      const { complaintId } = req.params;
+      const policeId = req.user.id;
+      const { description } = req.body;
+
+      // Verify complaint exists and is assigned to this officer
+      const complaint = await Complaint.findOne({
+        _id: complaintId,
+        assignedOfficerIds: policeId,
+      });
+
+      if (!complaint) {
+        return res.status(404).json({
+          success: false,
+          message: "Complaint not found or not assigned to you",
+        });
+      }
+
+      // Process evidence uploads
+      const evidenceFiles = [];
+      if (req.files && req.files.length > 0) {
+        for (const file of req.files) {
+          const uploadResult = await uploadToIPFS(
+            file.buffer,
+            file.originalname
+          );
+          if (uploadResult.success) {
+            evidenceFiles.push({
+              fileName: file.originalname,
+              ipfsHash: uploadResult.ipfsHash,
+              fileSize: file.size,
+              description: description || "",
+              uploadedBy: policeId,
+              uploadedAt: new Date(),
+            });
+          } else {
+            console.error("Failed to upload file to IPFS:", uploadResult.error);
+          }
+        }
+      }
+
+      // Add evidence to complaint attachments
+      complaint.attachments.push(...evidenceFiles);
+      await complaint.save();
+
+      // Append proceeding if FIR and case exist: EVIDENCE_SUBMITTED
+      const fir = await FIR.findOne({ complaintId: complaint._id });
+      if (fir) {
+        const caseData = await Case.findOne({ firId: fir._id });
+        if (caseData) {
+          await appendCaseProceeding(CaseProceeding, {
+            caseId: caseData._id,
+            type: "EVIDENCE_SUBMITTED",
+            createdByRole: "POLICE",
+            createdById: policeId,
+            description: description || "Evidence submitted on complaint",
+            attachments: evidenceFiles.map(e => ({ fileName: e.fileName, ipfsHash: e.ipfsHash, fileSize: e.fileSize })),
+            metadata: { complaintId: complaint._id },
+          });
+        }
+      }
+
+      // Populate the response
+      await complaint.populate("complainantId", "name nid phone");
+      await complaint.populate("assignedOfficerIds", "name rank station");
+
+      res.json({
+        success: true,
+        message: "Evidence submitted successfully",
+        data: {
+          complaintId,
+          evidenceFiles,
+        },
+      });
+    } catch (error) {
+      console.error("Submit evidence error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to submit evidence",
+        error: error.message,
+      });
+    }
+  }
+);
+
+// Get my assigned cases (for investigating officers)
+router.get("/cases", authenticateToken, async (req, res) => {
+  try {
+    const policeId = req.user.id;
+
+    const cases = await Case.find({
+      investigatingOfficerIds: policeId,
+    })
+      .populate("firId")
+      .populate("assignedJudgeId", "name courtName")
+      .populate("accusedLawyerId", "name firmName")
+      .populate("prosecutorLawyerId", "name firmName")
+      .populate("investigatingOfficerIds", "name rank station")
+      .populate({
+        path: "firId",
+        populate: {
+          path: "complaintId",
+          populate: {
+            path: "complainantId",
+            select: "name nid phone",
+          },
+        },
+      })
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: cases,
+    });
+  } catch (error) {
+    console.error("Get police cases error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get cases",
+      error: error.message,
+    });
+  }
+});
+
+// Submit additional evidence for case
+router.post(
+  "/cases/:caseId/evidence",
+  authenticateToken,
+  upload.array("evidence", 5),
+  async (req, res) => {
+    try {
+      const { caseId } = req.params;
+      const policeId = req.user.id;
+      const { description } = req.body;
+
+      // Verify case exists and officer is assigned
+      const caseData = await Case.findOne({
+        _id: caseId,
+        investigatingOfficerIds: policeId,
+      });
+
+      if (!caseData) {
+        return res.status(404).json({
+          success: false,
+          message: "Case not found or not assigned to you",
+        });
+      }
+
+      // Process evidence uploads
+      const evidenceFiles = [];
+      if (req.files && req.files.length > 0) {
+        for (const file of req.files) {
+          const uploadResult = await uploadToIPFS(
+            file.buffer,
+            file.originalname
+          );
+          if (uploadResult.success) {
+            evidenceFiles.push({
+              fileName: file.originalname,
+              ipfsHash: uploadResult.ipfsHash,
+              fileSize: file.size,
+              description: description || "",
+              uploadedBy: policeId,
+              uploadedAt: new Date(),
+            });
+          } else {
+            console.error("Failed to upload file to IPFS:", uploadResult.error);
+          }
+        }
+      }
+
+      // Append proceeding: EVIDENCE_SUBMITTED
+      await appendCaseProceeding(CaseProceeding, {
+        caseId: caseData._id,
+        type: "EVIDENCE_SUBMITTED",
+        createdByRole: "POLICE",
+        createdById: policeId,
+        description: description || "Evidence submitted",
+        attachments: evidenceFiles.map(e => ({ fileName: e.fileName, ipfsHash: e.ipfsHash, fileSize: e.fileSize })),
+      });
+
+      res.json({
+        success: true,
+        message: "Evidence submitted successfully",
+        data: {
+          caseId,
+          evidenceFiles,
+        },
+      });
+    } catch (error) {
+      console.error("Submit case evidence error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to submit evidence",
+        error: error.message,
+      });
+    }
+  }
+);
+
+// =============== NOTIFICATIONS ===============
+
+// Get my notifications
+router.get("/notifications", authenticateToken, async (req, res) => {
+  try {
+    const policeId = req.user.id;
+    const { page = 1, limit = 20, unreadOnly = false } = req.query;
+
+    const query = {
+      recipientId: policeId,
+      recipientType: "POLICE",
+    };
+
+    if (unreadOnly === "true") {
+      query.isRead = false;
+    }
+
+    const notifications = await Notification.find(query)
+      .populate("caseId", "caseNumber")
+      .populate("complaintId", "title")
+      .populate("firId", "firNumber")
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await Notification.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: notifications,
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(total / limit),
+        totalItems: total,
+        hasNext: page * limit < total,
+        hasPrev: page > 1,
+      },
+    });
+  } catch (error) {
+    console.error("Get notifications error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get notifications",
+      error: error.message,
+    });
+  }
+});
+
+// Mark notification as read
+router.put("/notifications/:notificationId/read", authenticateToken, async (req, res) => {
+  try {
+    const { notificationId } = req.params;
+    const policeId = req.user.id;
+
+    const notification = await Notification.findOneAndUpdate(
+      {
+        _id: notificationId,
+        recipientId: policeId,
+        recipientType: "POLICE",
+      },
+      { isRead: true },
+      { new: true }
+    );
+
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        message: "Notification not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Notification marked as read",
+      data: notification,
+    });
+  } catch (error) {
+    console.error("Mark notification read error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to mark notification as read",
+      error: error.message,
+    });
+  }
+});
+
+// Mark all notifications as read
+router.put("/notifications/read-all", authenticateToken, async (req, res) => {
+  try {
+    const policeId = req.user.id;
+
+    const result = await Notification.updateMany(
+      {
+        recipientId: policeId,
+        recipientType: "POLICE",
+        isRead: false,
+      },
+      { isRead: true }
+    );
+
+    res.json({
+      success: true,
+      message: `${result.modifiedCount} notifications marked as read`,
+      data: { modifiedCount: result.modifiedCount },
+    });
+  } catch (error) {
+    console.error("Mark all notifications read error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to mark notifications as read",
       error: error.message,
     });
   }

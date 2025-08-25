@@ -2,7 +2,7 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import multer from "multer";
-import { Citizen, Complaint, Police, Case, FIR } from "../models/index.js";
+import { Citizen, Complaint, Police, Case, FIR, Notification, CaseProceeding } from "../models/index.js";
 import { authenticateToken } from "../middleware/auth.js";
 import { uploadToIPFS } from "../utils/ipfs.js";
 
@@ -342,6 +342,289 @@ router.get("/complaints/:complaintId", authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to get complaint details",
+      error: error.message,
+    });
+  }
+});
+
+// =============== LAWYER REQUEST SYSTEM ===============
+
+// Get all available lawyers
+router.get("/lawyers", authenticateToken, async (req, res) => {
+  try {
+    const lawyers = await Lawyer.find().select("name firmName bid");
+
+    res.json({
+      success: true,
+      data: lawyers,
+    });
+  } catch (error) {
+    console.error("Get lawyers error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get lawyers",
+      error: error.message,
+    });
+  }
+});
+
+// Request a lawyer for a case
+router.post("/cases/:caseId/request-lawyer", authenticateToken, async (req, res) => {
+  try {
+    const { caseId } = req.params;
+    const { lawyerId, message } = req.body;
+    const citizenId = req.user.id;
+
+    // Verify the case exists and involves this citizen
+    const caseData = await Case.findById(caseId)
+      .populate({
+        path: "firId",
+        populate: {
+          path: "complaintId",
+          populate: {
+            path: "complainantId",
+            select: "name nid",
+          },
+        },
+      });
+
+    if (!caseData) {
+      return res.status(404).json({
+        success: false,
+        message: "Case not found",
+      });
+    }
+
+    // Check if citizen is involved in this case (complainant)
+    const complainantId = caseData.firId.complaintId.complainantId._id.toString();
+    if (complainantId !== citizenId) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not involved in this case",
+      });
+    }
+
+    // Verify lawyer exists
+    const lawyer = await Lawyer.findById(lawyerId);
+    if (!lawyer) {
+      return res.status(404).json({
+        success: false,
+        message: "Lawyer not found",
+      });
+    }
+
+    // Check if request already exists
+    const existingRequest = await LawyerRequest.findOne({
+      citizenId,
+      caseId,
+      requestedLawyerId: lawyerId,
+    });
+
+    if (existingRequest) {
+      return res.status(400).json({
+        success: false,
+        message: "Request already sent to this lawyer",
+      });
+    }
+
+    // Create lawyer request
+    const lawyerRequest = new LawyerRequest({
+      citizenId,
+      caseId,
+      requestedLawyerId: lawyerId,
+      message: message || "",
+      status: "PENDING",
+    });
+
+    await lawyerRequest.save();
+
+    // Populate the response
+    await lawyerRequest.populate("requestedLawyerId", "name firmName");
+    await lawyerRequest.populate("caseId", "caseNumber");
+
+    res.status(201).json({
+      success: true,
+      message: "Lawyer request sent successfully",
+      data: lawyerRequest,
+    });
+  } catch (error) {
+    console.error("Request lawyer error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to request lawyer",
+      error: error.message,
+    });
+  }
+});
+
+// Get my lawyer requests
+router.get("/lawyer-requests", authenticateToken, async (req, res) => {
+  try {
+    const citizenId = req.user.id;
+
+    const requests = await LawyerRequest.find({ citizenId })
+      .populate("requestedLawyerId", "name firmName")
+      .populate("caseId", "caseNumber")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: requests,
+    });
+  } catch (error) {
+    console.error("Get lawyer requests error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get lawyer requests",
+      error: error.message,
+    });
+  }
+});
+
+// Get proceedings for a case (citizen view)
+router.get("/cases/:caseId/proceedings", authenticateToken, async (req, res) => {
+  try {
+    const { caseId } = req.params;
+    const citizenId = req.user.id;
+
+    // Ensure citizen is the complainant of the FIR's complaint
+    const caseData = await Case.findById(caseId).populate({
+      path: "firId",
+      populate: {
+        path: "complaintId",
+        populate: { path: "complainantId", select: "_id" },
+      },
+    });
+
+    if (!caseData) {
+      return res.status(404).json({ success: false, message: "Case not found" });
+    }
+
+    const complainantId = caseData.firId?.complaintId?.complainantId?._id?.toString();
+    if (complainantId !== citizenId) {
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
+
+    const proceedings = await CaseProceeding.find({ caseId })
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, data: proceedings });
+  } catch (error) {
+    console.error("Get case proceedings error:", error);
+    res.status(500).json({ success: false, message: "Failed to get case proceedings", error: error.message });
+  }
+});
+
+// =============== NOTIFICATIONS ===============
+
+// Get my notifications
+router.get("/notifications", authenticateToken, async (req, res) => {
+  try {
+    const citizenId = req.user.id;
+    const { page = 1, limit = 20, unreadOnly = false } = req.query;
+
+    const query = {
+      recipientId: citizenId,
+      recipientType: "CITIZEN",
+    };
+
+    if (unreadOnly === "true") {
+      query.isRead = false;
+    }
+
+    const notifications = await Notification.find(query)
+      .populate("caseId", "caseNumber")
+      .populate("complaintId", "title")
+      .populate("firId", "firNumber")
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await Notification.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: notifications,
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(total / limit),
+        totalItems: total,
+        hasNext: page * limit < total,
+        hasPrev: page > 1,
+      },
+    });
+  } catch (error) {
+    console.error("Get notifications error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get notifications",
+      error: error.message,
+    });
+  }
+});
+
+// Mark notification as read
+router.put("/notifications/:notificationId/read", authenticateToken, async (req, res) => {
+  try {
+    const { notificationId } = req.params;
+    const citizenId = req.user.id;
+
+    const notification = await Notification.findOneAndUpdate(
+      {
+        _id: notificationId,
+        recipientId: citizenId,
+        recipientType: "CITIZEN",
+      },
+      { isRead: true },
+      { new: true }
+    );
+
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        message: "Notification not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Notification marked as read",
+      data: notification,
+    });
+  } catch (error) {
+    console.error("Mark notification read error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to mark notification as read",
+      error: error.message,
+    });
+  }
+});
+
+// Mark all notifications as read
+router.put("/notifications/read-all", authenticateToken, async (req, res) => {
+  try {
+    const citizenId = req.user.id;
+
+    const result = await Notification.updateMany(
+      {
+        recipientId: citizenId,
+        recipientType: "CITIZEN",
+        isRead: false,
+      },
+      { isRead: true }
+    );
+
+    res.json({
+      success: true,
+      message: `${result.modifiedCount} notifications marked as read`,
+      data: { modifiedCount: result.modifiedCount },
+    });
+  } catch (error) {
+    console.error("Mark all notifications read error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to mark notifications as read",
       error: error.message,
     });
   }

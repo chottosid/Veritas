@@ -174,6 +174,78 @@ const caseSchema = new Schema(
   }
 );
 
+// Case Proceeding Schema
+const caseProceedingSchema = new Schema(
+  {
+    caseId: { type: Schema.Types.ObjectId, ref: "Case", index: true, required: true },
+    type: {
+      type: String,
+      enum: [
+        "HEARING_SCHEDULED",
+        "EVIDENCE_SUBMITTED",
+        "DOCUMENT_FILED",
+        "STATUS_CHANGED",
+        "SUMMON_ISSUED",
+        "ORDER_PASSED",
+        "JUDGMENT",
+        "CASE_CREATED",
+      ],
+      required: true,
+    },
+    createdByRole: { type: String, enum: ["JUDGE", "POLICE", "LAWYER", "CITIZEN", "SYSTEM"], required: true },
+    createdById: { type: Schema.Types.ObjectId, required: true },
+    description: { type: String },
+    at: { type: Date, default: Date.now },
+    attachments: [
+      {
+        fileName: String,
+        ipfsHash: String,
+        fileSize: Number,
+        uploadedAt: { type: Date, default: Date.now },
+      },
+    ],
+    metadata: Schema.Types.Mixed,
+  },
+  { timestamps: true }
+);
+
+// Notification Schema
+const notificationSchema = new Schema(
+  {
+    recipientId: { type: Schema.Types.ObjectId, required: true },
+    recipientType: {
+      type: String,
+      enum: ["CITIZEN", "POLICE", "JUDGE", "LAWYER"],
+      required: true,
+    },
+    title: { type: String, required: true },
+    message: { type: String, required: true },
+    caseId: { type: Schema.Types.ObjectId, ref: "Case" },
+    complaintId: { type: Schema.Types.ObjectId, ref: "Complaint" },
+    firId: { type: Schema.Types.ObjectId, ref: "FIR" },
+    type: {
+      type: String,
+      enum: [
+        "CASE_CREATED",
+        "HEARING_SCHEDULED",
+        "EVIDENCE_SUBMITTED",
+        "LAWYER_REQUEST",
+        "LAWYER_ACCEPTED",
+        "LAWYER_REJECTED",
+        "CASE_CLOSED",
+        "COMPLAINT_ASSIGNED",
+        "FIR_REGISTERED",
+      ],
+      required: true,
+    },
+    isRead: { type: Boolean, default: false },
+    metadata: { type: Schema.Types.Mixed }, // Additional data like hearing date, etc.
+  },
+  {
+    timestamps: true,
+  }
+);
+
 // Create Models
 const Citizen = mongoose.model("Citizen", citizenSchema);
 const Police = mongoose.model("Police", policeSchema);
@@ -183,5 +255,7 @@ const Complaint = mongoose.model("Complaint", complaintSchema);
 const FIR = mongoose.model("FIR", firSchema);
 const LawyerRequest = mongoose.model("LawyerRequest", lawyerRequestSchema);
 const Case = mongoose.model("Case", caseSchema);
+const CaseProceeding = mongoose.model("CaseProceeding", caseProceedingSchema);
+const Notification = mongoose.model("Notification", notificationSchema);
 
-export { Citizen, Police, Judge, Lawyer, Complaint, FIR, LawyerRequest, Case };
+export { Citizen, Police, Judge, Lawyer, Complaint, FIR, LawyerRequest, Case, CaseProceeding, Notification };

@@ -46,3 +46,48 @@ export const uploadToIPFS = async (fileBuffer, fileName) => {
 export const getFromIPFS = (ipfsHash) => {
   return `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
 };
+
+// Create notification utility function
+export const createNotification = async (Notification, {
+  recipientId,
+  recipientType,
+  title,
+  message,
+  type,
+  caseId = null,
+  complaintId = null,
+  firId = null,
+  metadata = null,
+}) => {
+  try {
+    const notification = new Notification({
+      recipientId,
+      recipientType,
+      title,
+      message,
+      type,
+      caseId,
+      complaintId,
+      firId,
+      metadata,
+    });
+
+    await notification.save();
+    return notification;
+  } catch (error) {
+    console.error("Failed to create notification:", error);
+    return null;
+  }
+};
+
+// Append case proceeding helper
+export const appendCaseProceeding = async (CaseProceeding, payload) => {
+  try {
+    const proceeding = new CaseProceeding(payload);
+    await proceeding.save();
+    return proceeding;
+  } catch (error) {
+    console.error("Failed to append case proceeding:", error);
+    return null;
+  }
+};
