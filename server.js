@@ -1,4 +1,5 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+dotenv.config();
 import express from "express";
 import { connectDB, isDBConnected } from "./config/database.js";
 import corsMiddleware from "./middleware/cors.js";
@@ -10,8 +11,7 @@ import judgeRoutes from "./routes/judges.js";
 import lawyerRoutes from "./routes/lawyers.js";
 
 const app = express();
-const PORT = process.env.PORT || 3001;
-
+const PORT = process.env.PORT || 3001; // Add fallback value
 // Middleware
 app.use(corsMiddleware);
 app.use(express.json());
