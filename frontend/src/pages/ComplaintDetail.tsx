@@ -1,51 +1,58 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
-  FileText, 
-  ArrowLeft, 
-  Clock, 
-  CheckCircle, 
-  AlertCircle,
-  Download,
+  ArrowLeft,
   Calendar,
+  Clock,
   User,
-  Badge as BadgeIcon,
   MapPin,
+  Badge as BadgeIcon,
+  Download,
+  AlertCircle,
+  CheckCircle,
+  Eye,
+  FileText,
   Phone,
   Mail,
   Shield,
-  RefreshCw
+  Building,
+  RefreshCw,
+  Plus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Layout } from '@/components/layout/Layout';
-import { useAuthStore } from '@/store/authStore';
 import { useToast } from '@/hooks/use-toast';
-import api, { isAuthenticated } from '@/lib/api';
+import api from '@/lib/api';
 
 interface Attachment {
   fileName: string;
   ipfsHash: string;
-  uploadedAt: string;
+  fileSize: number;
+  uploadedAt?: string;
 }
 
 interface AssignedOfficer {
-  id: string;
+  _id: string;
   name: string;
   rank: string;
-  station?: string;
+  station: string;
 }
 
 interface Complainant {
+  _id: string;
   name: string;
   nid: string;
-  phone: string;
+  phone?: string;
+  email?: string;
 }
 
 interface ComplaintDetail {
-  id: string;
+  _id: string;
   title: string;
   description: string;
   area: string;
@@ -54,92 +61,26 @@ interface ComplaintDetail {
   assignedOfficerIds: AssignedOfficer[];
   attachments: Attachment[];
   createdAt: string;
+  updatedAt: string;
 }
-
-const statusConfig = {
-  PENDING: {
-    label: 'Pending',
-    color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    icon: Clock,
-    description: 'Complaint is awaiting assignment to an investigating officer'
-  },
-  UNDER_INVESTIGATION: {
-    label: 'Under Investigation',
-    color: 'bg-blue-100 text-blue-800 border-blue-200',
-    icon: AlertCircle,
-    description: 'Complaint is being actively investigated by assigned officer'
-  },
-  FIR_REGISTERED: {
-    label: 'FIR Registered',
-    color: 'bg-purple-100 text-purple-800 border-purple-200',
-    icon: FileText,
-    description: 'First Information Report has been filed with the court'
-  },
-  CASE_FILED: {
-    label: 'Case Filed',
-    color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-    icon: BadgeIcon,
-    description: 'Case has been filed in court and assigned to a judge'
-  },
-  CLOSED: {
-    label: 'Closed',
-    color: 'bg-green-100 text-green-800 border-green-200',
-    icon: CheckCircle,
-    description: 'Complaint has been resolved and closed'
-  }
-};
 
 export const ComplaintDetail = () => {
   const { complaintId } = useParams<{ complaintId: string }>();
-  const { user, token } = useAuthStore();
-  const { toast } = useToast();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  
   const [complaint, setComplaint] = useState<ComplaintDetail | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    // Check authentication before making API calls
-    if (!isAuthenticated() || !user || !token) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in to view complaint details",
-        variant: "destructive",
-      });
-      navigate('/login');
-      return;
-    }
-
-    // Only allow citizens to access this page
-    if (user.role !== 'CITIZEN') {
-      toast({
-        title: "Access Denied",
-        description: "This page is only accessible to citizens",
-        variant: "destructive",
-      });
-      navigate('/dashboard');
-      return;
-    }
-
-    if (complaintId) {
-      fetchComplaintDetail();
-    }
-  }, [complaintId, user, token, navigate]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchComplaintDetail = async () => {
+    if (!complaintId) return;
+    
     try {
-      setIsLoading(true);
-      
-      // Double-check authentication before API call
-      if (!isAuthenticated()) {
-        throw new Error('Not authenticated');
-      }
-
-      console.log('Fetching complaint detail with token:', token ? 'Present' : 'Missing');
-      console.log('Complaint ID:', complaintId);
+      setLoading(true);
+      setError(null);
       
       const response = await api.get(`/citizens/complaints/${complaintId}`);
-      
-      console.log('API Response:', response.data);
       
       if (response.data.success) {
         setComplaint(response.data.data);
@@ -147,38 +88,63 @@ export const ComplaintDetail = () => {
         throw new Error(response.data.message || 'Failed to fetch complaint details');
       }
     } catch (error: any) {
-      console.error('Error fetching complaint details:', error);
+      console.error('Error fetching complaint:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch complaint details';
+      setError(errorMessage);
       
-      if (error.response?.status === 401) {
-        toast({
-          title: "Session Expired",
-          description: "Please log in again to access complaint details",
-          variant: "destructive",
-        });
-        navigate('/login');
-      } else if (error.response?.status === 403) {
-        toast({
-          title: "Access Denied",
-          description: "You don't have permission to view this complaint",
-          variant: "destructive",
-        });
-        navigate('/complaints');
-      } else if (error.response?.status === 404) {
+      if (error.response?.status === 404) {
         toast({
           title: "Complaint Not Found",
-          description: "The complaint you're looking for doesn't exist",
+          description: "The complaint you're looking for doesn't exist or you don't have access to it.",
           variant: "destructive",
         });
-        navigate('/complaints');
       } else {
         toast({
           title: "Error",
-          description: error.response?.data?.message || error.message || "Failed to fetch complaint details",
+          description: errorMessage,
           variant: "destructive",
         });
       }
     } finally {
-      setIsLoading(false);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchComplaintDetail();
+  }, [complaintId]);
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'PENDING':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'UNDER_INVESTIGATION':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'FIR_REGISTERED':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'CASE_FILED':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'CLOSED':
+        return 'bg-green-100 text-green-800 border-green-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'PENDING':
+        return <Clock className="h-4 w-4" />;
+      case 'UNDER_INVESTIGATION':
+        return <Eye className="h-4 w-4" />;
+      case 'FIR_REGISTERED':
+        return <FileText className="h-4 w-4" />;
+      case 'CASE_FILED':
+        return <AlertCircle className="h-4 w-4" />;
+      case 'CLOSED':
+        return <CheckCircle className="h-4 w-4" />;
+      default:
+        return <Clock className="h-4 w-4" />;
     }
   };
 
@@ -192,181 +158,192 @@ export const ComplaintDetail = () => {
     });
   };
 
-  const downloadAttachment = (attachment: Attachment) => {
-    // Implement IPFS download logic here
-    toast({
-      title: "Download",
-      description: `Downloading ${attachment.fileName}...`,
-    });
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  if (isLoading) {
+  const handleDownloadAttachment = (attachment: Attachment) => {
+    // Create IPFS gateway URL - you may need to adjust this based on your IPFS setup
+    const ipfsGatewayUrl = `https://ipfs.io/ipfs/${attachment.ipfsHash}`;
+    window.open(ipfsGatewayUrl, '_blank');
+  };
+
+  if (loading) {
     return (
       <Layout>
-        <div className="container mx-auto px-4 py-8">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-gray-200 rounded w-1/4"></div>
-            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-            <div className="h-96 bg-gray-200 rounded-lg"></div>
+        <div className="container mx-auto px-4 py-8 max-w-6xl">
+          <div className="mb-6">
+            <Skeleton className="h-10 w-32 mb-4" />
+            <Skeleton className="h-8 w-64 mb-2" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+          
+          <div className="grid gap-6">
+            <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-24 w-full" />
           </div>
         </div>
       </Layout>
     );
   }
 
-  if (!complaint) {
+  if (error || !complaint) {
     return (
       <Layout>
-        <div className="container mx-auto px-4 py-8">
-          <Card className="border-0 shadow-lg">
-            <CardContent className="p-12 text-center">
-              <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-600 mb-2">
-                Complaint not found
-              </h3>
-              <p className="text-gray-500 mb-6">
-                The complaint you're looking for doesn't exist or you don't have permission to view it.
-              </p>
-              <Button asChild>
-                <Link to="/complaints">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Complaints
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
+        <div className="container mx-auto px-4 py-8 max-w-6xl">
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/complaints')}
+            className="mb-6"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to My Complaints
+          </Button>
+          
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {error || 'Failed to load complaint details'}
+            </AlertDescription>
+          </Alert>
+          
+          <div className="mt-6">
+            <Button onClick={fetchComplaintDetail} variant="outline">
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Try Again
+            </Button>
+          </div>
         </div>
       </Layout>
     );
   }
-
-  const statusInfo = statusConfig[complaint.status];
-  const StatusIcon = statusInfo.icon;
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8">
-        {/* Back Button and Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-4 mb-4">
-            <Button variant="outline" asChild>
-              <Link to="/complaints">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to My Complaints
-              </Link>
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={fetchComplaintDetail}
-              disabled={isLoading}
-              className="flex items-center gap-2"
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/complaints')}
             >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-              Refresh
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to My Complaints
             </Button>
           </div>
           
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <Button onClick={fetchComplaintDetail} variant="outline" size="sm">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Refresh
+          </Button>
+        </div>
+
+        {/* Title and Status */}
+        <div className="mb-6">
+          <div className="flex items-start justify-between mb-4">
             <div>
-              <h1 className="text-3xl font-bold text-slate-800 mb-2">{complaint.title}</h1>
-              <p className="text-slate-600">
-                Complaint ID: {complaint.id}
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                {complaint.title}
+              </h1>
+              <p className="text-gray-600">
+                Complaint ID: <span className="font-mono text-sm">{complaint._id}</span>
               </p>
-              {user && (
-                <p className="text-sm text-slate-500 mt-1">
-                  Viewing as: {user.name} ({user.nid})
-                </p>
-              )}
             </div>
-            <Badge className={`${statusInfo.color} border font-medium px-4 py-2 text-lg w-fit`}>
-              <StatusIcon className="h-4 w-4 mr-2" />
-              {statusInfo.label}
+            
+            <Badge className={`${getStatusColor(complaint.status)} flex items-center gap-2 px-3 py-1`}>
+              {getStatusIcon(complaint.status)}
+              {complaint.status.replace('_', ' ')}
             </Badge>
+          </div>
+          
+          <div className="flex items-center gap-4 text-sm text-gray-600">
+            <div className="flex items-center gap-1">
+              <Calendar className="h-4 w-4" />
+              Filed on {formatDate(complaint.createdAt)}
+            </div>
+            {complaint.updatedAt !== complaint.createdAt && (
+              <div className="flex items-center gap-1">
+                <Clock className="h-4 w-4" />
+                Updated {formatDate(complaint.updatedAt)}
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid gap-6 lg:grid-cols-3">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Status Information */}
-            <Card className="border-0 shadow-lg">
+            {/* Complaint Details */}
+            <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <StatusIcon className="h-5 w-5" />
-                  Current Status
+                  <FileText className="h-5 w-5" />
+                  Complaint Details
                 </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-slate-600 mb-4">{statusInfo.description}</p>
-                <div className="flex items-center gap-2 text-sm text-slate-500">
-                  <Calendar className="h-4 w-4" />
-                  <span>Filed on {formatDate(complaint.createdAt)}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Complaint Details */}
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle>Complaint Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <h4 className="font-medium text-slate-700 mb-2">Description</h4>
-                  <p className="text-slate-600 leading-relaxed">{complaint.description}</p>
+                  <h4 className="font-medium text-gray-900 mb-2">Description</h4>
+                  <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
+                    {complaint.description}
+                  </p>
                 </div>
                 
                 <Separator />
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-slate-400" />
-                    <div>
-                      <p className="text-sm font-medium text-slate-700">Area/Station</p>
-                      <p className="text-sm text-slate-600">{complaint.area}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-slate-400" />
-                    <div>
-                      <p className="text-sm font-medium text-slate-700">Filed Date</p>
-                      <p className="text-sm text-slate-600">{formatDate(complaint.createdAt)}</p>
-                    </div>
-                  </div>
+                <div className="flex items-center gap-2 text-gray-700">
+                  <MapPin className="h-4 w-4" />
+                  <span className="font-medium">Area:</span>
+                  <span>{complaint.area}</span>
                 </div>
               </CardContent>
             </Card>
 
             {/* Attachments */}
             {complaint.attachments.length > 0 && (
-              <Card className="border-0 shadow-lg">
+              <Card>
                 <CardHeader>
-                  <CardTitle>Evidence & Attachments</CardTitle>
+                  <CardTitle className="flex items-center gap-2">
+                    <Download className="h-5 w-5" />
+                    Attachments ({complaint.attachments.length})
+                  </CardTitle>
                   <CardDescription>
-                    {complaint.attachments.length} file(s) attached to this complaint
+                    Files uploaded with this complaint
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-3">
                     {complaint.attachments.map((attachment, index) => (
-                      <div key={index} className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-slate-700 truncate">{attachment.fileName}</p>
-                            <p className="text-sm text-slate-500">
-                              Uploaded: {formatDate(attachment.uploadedAt)}
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-5 w-5 text-gray-500" />
+                          <div>
+                            <p className="font-medium text-gray-900">
+                              {attachment.fileName}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {formatFileSize(attachment.fileSize)}
                             </p>
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => downloadAttachment(attachment)}
-                            className="ml-2"
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
                         </div>
+                        
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDownloadAttachment(attachment)}
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Download
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -378,7 +355,7 @@ export const ComplaintDetail = () => {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Complainant Information */}
-            <Card className="border-0 shadow-lg">
+            <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <User className="h-5 w-5" />
@@ -387,33 +364,60 @@ export const ComplaintDetail = () => {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div>
-                  <p className="font-medium text-slate-700">{complaint.complainantId.name}</p>
-                  <p className="text-sm text-slate-500">National ID: {complaint.complainantId.nid}</p>
+                  <p className="font-medium text-gray-900">
+                    {complaint.complainantId.name}
+                  </p>
                 </div>
                 
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <Phone className="h-4 w-4" />
-                  <span>{complaint.complainantId.phone}</span>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <BadgeIcon className="h-4 w-4" />
+                  <span>NID: {complaint.complainantId.nid}</span>
                 </div>
+                
+                {complaint.complainantId.phone && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Phone className="h-4 w-4" />
+                    <span>{complaint.complainantId.phone}</span>
+                  </div>
+                )}
+                
+                {complaint.complainantId.email && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Mail className="h-4 w-4" />
+                    <span>{complaint.complainantId.email}</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
             {/* Assigned Officers */}
             {complaint.assignedOfficerIds.length > 0 && (
-              <Card className="border-0 shadow-lg">
+              <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Shield className="h-5 w-5" />
-                    Investigating Officer(s)
+                    Assigned Officers
                   </CardTitle>
+                  <CardDescription>
+                    Officers handling this complaint
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {complaint.assignedOfficerIds.map((officer, index) => (
-                    <div key={index} className="border-l-4 border-blue-500 pl-4">
-                      <p className="font-medium text-slate-700">{officer.name}</p>
-                      <p className="text-sm text-slate-600">{officer.rank}</p>
-                      {officer.station && (
-                        <p className="text-sm text-slate-500">{officer.station}</p>
+                  {complaint.assignedOfficerIds.map((officer) => (
+                    <div key={officer._id} className="space-y-2">
+                      <p className="font-medium text-gray-900">
+                        {officer.name}
+                      </p>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <BadgeIcon className="h-4 w-4" />
+                        <span>{officer.rank}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Building className="h-4 w-4" />
+                        <span>{officer.station}</span>
+                      </div>
+                      {complaint.assignedOfficerIds.length > 1 && (
+                        <Separator className="my-3" />
                       )}
                     </div>
                   ))}
@@ -422,24 +426,23 @@ export const ComplaintDetail = () => {
             )}
 
             {/* Quick Actions */}
-            <Card className="border-0 shadow-lg">
+            <Card>
               <CardHeader>
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button variant="outline" className="w-full justify-start">
-                  <FileText className="h-4 w-4 mr-2" />
-                  Download Report
+                <Button variant="outline" className="w-full" asChild>
+                  <Link to="/complaints">
+                    <FileText className="h-4 w-4 mr-2" />
+                    View All Complaints
+                  </Link>
                 </Button>
                 
-                <Button variant="outline" className="w-full justify-start">
-                  <Mail className="h-4 w-4 mr-2" />
-                  Contact Officer
-                </Button>
-                
-                <Button variant="outline" className="w-full justify-start">
-                  <AlertCircle className="h-4 w-4 mr-2" />
-                  Report Issue
+                <Button variant="outline" className="w-full" asChild>
+                  <Link to="/file-complaint">
+                    <Plus className="h-4 w-4 mr-2" />
+                    File New Complaint
+                  </Link>
                 </Button>
               </CardContent>
             </Card>

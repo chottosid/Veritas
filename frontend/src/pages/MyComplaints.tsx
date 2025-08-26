@@ -39,7 +39,7 @@ interface AssignedOfficer {
 }
 
 interface Complaint {
-  id: string;
+  _id: string;
   title: string;
   description: string;
   area: string;
@@ -387,7 +387,7 @@ export const MyComplaints = () => {
               const StatusIcon = statusInfo.icon;
 
               return (
-                <Card key={complaint.id} className="border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+                <Card key={complaint._id} className="border-0 shadow-lg hover:shadow-xl transition-all duration-300">
                   <CardHeader className="pb-4">
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                       <div className="flex-1">
@@ -403,7 +403,13 @@ export const MyComplaints = () => {
                         </CardDescription>
                       </div>
                       <Button variant="outline" size="sm" asChild>
-                        <Link to={`/complaints/${complaint.id}`}>
+                        <Link 
+                          to={`/complaints/${complaint._id}`}
+                          onClick={() => {
+                            console.log('Navigating to complaint detail with ID:', complaint._id);
+                            console.log('Full complaint object:', complaint);
+                          }}
+                        >
                           <Eye className="h-4 w-4 mr-2" />
                           View Details
                         </Link>

@@ -8,10 +8,10 @@ import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { Dashboard } from "./pages/Dashboard";
 import { MyComplaints } from "./pages/MyComplaints";
-import { ComplaintDetail } from "./pages/ComplaintDetail";
 import { FileComplaint } from "./pages/FileComplaint";
 import NotFound from "./pages/NotFound";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { ComplaintDetail } from "./pages/ComplaintDetail";
 
 const queryClient = new QueryClient();
 
@@ -57,6 +57,7 @@ const App = () => (
               </ProtectedRoute>
             } 
           />
+       
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

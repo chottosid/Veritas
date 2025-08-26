@@ -139,7 +139,7 @@
   ]
 }
 ```
-<!-- 
+
 ### File a new complaint
 **POST** `/api/citizens/complaints`
 
@@ -174,7 +174,7 @@
     "createdAt": "2025-08-24T10:00:00Z"
   }
 }
-``` -->
+```
 
 ### Get complaint details
 **GET** `/api/citizens/complaints/{complaintId}`
