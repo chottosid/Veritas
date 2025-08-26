@@ -22,18 +22,38 @@ import { useAuthStore } from '@/store/authStore';
 import { useToast } from '@/hooks/use-toast';
 import { api } from '@/lib/api';
 
+interface ActivityItem {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  time: string;
+  status?: string;
+}
+
 interface DashboardStats {
   complaints: number;
   cases: number;
   notifications: number;
-  recentActivity: Array<{
-    id: string;
-    type: string;
-    title: string;
-    description: string;
-    time: string;
-    status?: string;
-  }>;
+  recentActivity: ActivityItem[];
+}
+
+interface DashboardCard {
+  title: string;
+  value: number;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+  bgColor: string;
+  link: string;
+}
+
+interface QuickAction {
+  title: string;
+  description: string;
+  link: string;
+  icon: React.ComponentType<{ className?: string }>;
+  variant: string;
 }
 
 export const Dashboard = () => {
@@ -52,6 +72,32 @@ export const Dashboard = () => {
     recentActivity: []
   });
   const [isLoading, setIsLoading] = useState(true);
+
+  const generateMockActivity = (role: string): ActivityItem[] => {
+    const activities = {
+      CITIZEN: [
+        { id: '1', type: 'complaint', title: 'Complaint Filed', description: 'Theft report submitted successfully', time: '2 hours ago', status: 'PENDING' },
+        { id: '2', type: 'case', title: 'Case Update', description: 'Your case has been assigned to a judge', time: '1 day ago', status: 'ONGOING' },
+        { id: '3', type: 'notification', title: 'Hearing Scheduled', description: 'Court hearing on March 15, 2025', time: '2 days ago' }
+      ],
+      POLICE: [
+        { id: '1', type: 'complaint', title: 'New Complaint Assigned', description: 'Investigate theft case in Dhanmondi', time: '1 hour ago', status: 'ASSIGNED' },
+        { id: '2', type: 'fir', title: 'FIR Registered', description: 'FIR-2025-001 submitted to court', time: '3 hours ago', status: 'SUBMITTED' },
+        { id: '3', type: 'evidence', title: 'Evidence Submitted', description: 'CCTV footage uploaded for case', time: '1 day ago' }
+      ],
+      JUDGE: [
+        { id: '1', type: 'fir', title: 'New FIR Received', description: 'FIR-2025-002 requires review', time: '30 minutes ago', status: 'PENDING' },
+        { id: '2', type: 'hearing', title: 'Hearing Scheduled', description: 'Case hearing set for tomorrow', time: '2 hours ago', status: 'SCHEDULED' },
+        { id: '3', type: 'case', title: 'Case Closed', description: 'Verdict delivered for case 2025-001', time: '1 day ago', status: 'CLOSED' }
+      ],
+      LAWYER: [
+        { id: '1', type: 'request', title: 'New Client Request', description: 'Citizen requested representation', time: '45 minutes ago', status: 'PENDING' },
+        { id: '2', type: 'case', title: 'Case Documents Filed', description: 'Evidence submitted for client', time: '4 hours ago', status: 'FILED' },
+        { id: '3', type: 'hearing', title: 'Hearing Reminder', description: 'Client hearing tomorrow at 10 AM', time: '1 day ago' }
+      ]
+    };
+    return activities[role as keyof typeof activities] || activities.CITIZEN;
+  };
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -80,6 +126,12 @@ export const Dashboard = () => {
         }
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load dashboard data. Using demo data.",
+          variant: "destructive"
+        });
+        
         // Use mock data for demo
         setStats({
           complaints: Math.floor(Math.random() * 10) + 1,
@@ -93,43 +145,17 @@ export const Dashboard = () => {
     };
 
     fetchDashboardData();
-  }, [user]);
+  }, [user, toast]);
 
-  const generateMockActivity = (role: string) => {
-    const activities = {
-      CITIZEN: [
-        { id: '1', type: 'complaint', title: 'Complaint Filed', description: 'Theft report submitted successfully', time: '2 hours ago', status: 'PENDING' },
-        { id: '2', type: 'case', title: 'Case Update', description: 'Your case has been assigned to a judge', time: '1 day ago', status: 'ONGOING' },
-        { id: '3', type: 'notification', title: 'Hearing Scheduled', description: 'Court hearing on March 15, 2025', time: '2 days ago' }
-      ],
-      POLICE: [
-        { id: '1', type: 'complaint', title: 'New Complaint Assigned', description: 'Investigate theft case in Dhanmondi', time: '1 hour ago', status: 'ASSIGNED' },
-        { id: '2', type: 'fir', title: 'FIR Registered', description: 'FIR-2025-001 submitted to court', time: '3 hours ago', status: 'SUBMITTED' },
-        { id: '3', type: 'evidence', title: 'Evidence Submitted', description: 'CCTV footage uploaded for case', time: '1 day ago' }
-      ],
-      JUDGE: [
-        { id: '1', type: 'fir', title: 'New FIR Received', description: 'FIR-2025-002 requires review', time: '30 minutes ago', status: 'PENDING' },
-        { id: '2', type: 'hearing', title: 'Hearing Scheduled', description: 'Case hearing set for tomorrow', time: '2 hours ago', status: 'SCHEDULED' },
-        { id: '3', type: 'case', title: 'Case Closed', description: 'Verdict delivered for case 2025-001', time: '1 day ago', status: 'CLOSED' }
-      ],
-      LAWYER: [
-        { id: '1', type: 'request', title: 'New Client Request', description: 'Citizen requested representation', time: '45 minutes ago', status: 'PENDING' },
-        { id: '2', type: 'case', title: 'Case Documents Filed', description: 'Evidence submitted for client', time: '4 hours ago', status: 'FILED' },
-        { id: '3', type: 'hearing', title: 'Hearing Reminder', description: 'Client hearing tomorrow at 10 AM', time: '1 day ago' }
-      ]
-    };
-    return activities[role as keyof typeof activities] || activities.CITIZEN;
-  };
-
-  const getDashboardCards = () => {
-    const baseCards = [
+  const getDashboardCards = (): DashboardCard[] => {
+    const baseCards: DashboardCard[] = [
       {
         title: 'Notifications',
         value: stats.notifications,
         description: 'Unread updates',
         icon: Bell,
-        color: 'text-warning',
-        bgColor: 'bg-warning/10',
+        color: 'text-orange-600',
+        bgColor: 'bg-orange-100',
         link: '/notifications'
       }
     ];
@@ -142,8 +168,8 @@ export const Dashboard = () => {
             value: stats.complaints,
             description: 'Filed complaints',
             icon: FileText,
-            color: 'text-primary',
-            bgColor: 'bg-primary/10',
+            color: 'text-blue-600',
+            bgColor: 'bg-blue-100',
             link: '/complaints'
           },
           {
@@ -151,8 +177,8 @@ export const Dashboard = () => {
             value: stats.cases,
             description: 'Active cases',
             icon: Scale,
-            color: 'text-secondary',
-            bgColor: 'bg-secondary/10',
+            color: 'text-purple-600',
+            bgColor: 'bg-purple-100',
             link: '/cases'
           },
           ...baseCards
@@ -164,18 +190,18 @@ export const Dashboard = () => {
             value: stats.complaints,
             description: 'Under investigation',
             icon: FileText,
-            color: 'text-primary',
-            bgColor: 'bg-primary/10',
-            link: '/complaints'
+            color: 'text-blue-600',
+            bgColor: 'bg-blue-100',
+            link: '/police/complaints'
           },
           {
             title: 'Active Cases',
             value: stats.cases,
             description: 'Case proceedings',
             icon: Scale,
-            color: 'text-secondary',
-            bgColor: 'bg-secondary/10',
-            link: '/cases'
+            color: 'text-purple-600',
+            bgColor: 'bg-purple-100',
+            link: '/police/cases'
           },
           ...baseCards
         ];
@@ -186,8 +212,8 @@ export const Dashboard = () => {
             value: stats.complaints,
             description: 'Awaiting review',
             icon: FileText,
-            color: 'text-primary',
-            bgColor: 'bg-primary/10',
+            color: 'text-blue-600',
+            bgColor: 'bg-blue-100',
             link: '/firs'
           },
           {
@@ -195,8 +221,8 @@ export const Dashboard = () => {
             value: stats.cases,
             description: 'Assigned cases',
             icon: Scale,
-            color: 'text-secondary',
-            bgColor: 'bg-secondary/10',
+            color: 'text-purple-600',
+            bgColor: 'bg-purple-100',
             link: '/cases'
           },
           ...baseCards
@@ -208,8 +234,8 @@ export const Dashboard = () => {
             value: stats.complaints,
             description: 'Pending requests',
             icon: Users,
-            color: 'text-primary',
-            bgColor: 'bg-primary/10',
+            color: 'text-blue-600',
+            bgColor: 'bg-blue-100',
             link: '/requests'
           },
           {
@@ -217,8 +243,8 @@ export const Dashboard = () => {
             value: stats.cases,
             description: 'Representing clients',
             icon: Scale,
-            color: 'text-secondary',
-            bgColor: 'bg-secondary/10',
+            color: 'text-purple-600',
+            bgColor: 'bg-purple-100',
             link: '/cases'
           },
           ...baseCards
@@ -228,31 +254,31 @@ export const Dashboard = () => {
     }
   };
 
-  const getQuickActions = () => {
+  const getQuickActions = (): QuickAction[] => {
     switch (user?.role) {
       case 'CITIZEN':
         return [
-          { title: 'File New Complaint', description: 'Report an incident', link: '/file-complaint', icon: Plus, variant: 'btn-hero' },
-          { title: 'Find Lawyer', description: 'Get legal representation', link: '/lawyers', icon: Users, variant: 'btn-justice' },
-          { title: 'Track Case', description: 'View case progress', link: '/cases', icon: Eye, variant: 'btn-justice' }
+          { title: 'File New Complaint', description: 'Report an incident', link: '/file-complaint', icon: Plus, variant: 'primary' },
+          { title: 'Find Lawyer', description: 'Get legal representation', link: '/lawyers', icon: Users, variant: 'secondary' },
+          { title: 'Track Case', description: 'View case progress', link: '/cases', icon: Eye, variant: 'secondary' }
         ];
       case 'POLICE':
         return [
-          { title: 'View Complaints', description: 'Review assigned cases', link: '/complaints', icon: FileText, variant: 'btn-hero' },
-          { title: 'Submit Evidence', description: 'Upload case evidence', link: '/evidence/new', icon: Plus, variant: 'btn-justice' },
-          { title: 'File FIR', description: 'Register FIR', link: '/firs/new', icon: Scale, variant: 'btn-justice' }
+          { title: 'View Complaints', description: 'Review assigned cases', link: '/police/complaints', icon: FileText, variant: 'primary' },
+          { title: 'Submit Evidence', description: 'Upload case evidence', link: '/police/cases', icon: Plus, variant: 'secondary' },
+          { title: 'File FIR', description: 'Register FIR', link: '/police/complaints', icon: Scale, variant: 'secondary' }
         ];
       case 'JUDGE':
         return [
-          { title: 'Review FIRs', description: 'Process new FIRs', link: '/firs', icon: FileText, variant: 'btn-hero' },
-          { title: 'Schedule Hearing', description: 'Set court dates', link: '/hearings/new', icon: Clock, variant: 'btn-justice' },
-          { title: 'Manage Cases', description: 'View assigned cases', link: '/cases', icon: Scale, variant: 'btn-justice' }
+          { title: 'Review FIRs', description: 'Process new FIRs', link: '/firs', icon: FileText, variant: 'primary' },
+          { title: 'Schedule Hearing', description: 'Set court dates', link: '/hearings/new', icon: Clock, variant: 'secondary' },
+          { title: 'Manage Cases', description: 'View assigned cases', link: '/cases', icon: Scale, variant: 'secondary' }
         ];
       case 'LAWYER':
         return [
-          { title: 'View Requests', description: 'Check client requests', link: '/requests', icon: Users, variant: 'btn-hero' },
-          { title: 'Submit Documents', description: 'File case documents', link: '/documents/new', icon: Plus, variant: 'btn-justice' },
-          { title: 'My Cases', description: 'Manage client cases', link: '/cases', icon: Scale, variant: 'btn-justice' }
+          { title: 'View Requests', description: 'Check client requests', link: '/requests', icon: Users, variant: 'primary' },
+          { title: 'Submit Documents', description: 'File case documents', link: '/documents/new', icon: Plus, variant: 'secondary' },
+          { title: 'My Cases', description: 'Manage client cases', link: '/cases', icon: Scale, variant: 'secondary' }
         ];
       default:
         return [];
@@ -262,15 +288,30 @@ export const Dashboard = () => {
   const getStatusIcon = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'pending':
-        return <Clock className="h-4 w-4 text-warning" />;
+        return <Clock className="h-4 w-4 text-orange-600" />;
       case 'ongoing':
       case 'assigned':
-        return <TrendingUp className="h-4 w-4 text-primary" />;
+        return <TrendingUp className="h-4 w-4 text-blue-600" />;
       case 'completed':
       case 'closed':
-        return <CheckCircle className="h-4 w-4 text-success" />;
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
       default:
-        return <AlertCircle className="h-4 w-4 text-muted-foreground" />;
+        return <AlertCircle className="h-4 w-4 text-gray-500" />;
+    }
+  };
+
+  const getRoleDescription = (role: string | undefined) => {
+    switch (role) {
+      case 'CITIZEN':
+        return 'Manage your complaints and track case progress';
+      case 'POLICE':
+        return 'Handle complaints and manage investigations';
+      case 'JUDGE':
+        return 'Process FIRs and manage court proceedings';
+      case 'LAWYER':
+        return 'Represent clients and manage case documents';
+      default:
+        return 'Welcome to the justice system dashboard';
     }
   };
 
@@ -279,8 +320,8 @@ export const Dashboard = () => {
       <Layout>
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center space-y-4">
-            <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
-            <p className="text-muted-foreground">Loading dashboard...</p>
+            <div className="animate-spin h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto"></div>
+            <p className="text-gray-600">Loading dashboard...</p>
           </div>
         </div>
       </Layout>
@@ -295,11 +336,8 @@ export const Dashboard = () => {
           <h1 className="text-3xl lg:text-4xl font-bold">
             Welcome back, {user?.name}
           </h1>
-          <p className="text-lg text-muted-foreground">
-            {user?.role === 'CITIZEN' && 'Manage your complaints and track case progress'}
-            {user?.role === 'POLICE' && 'Review assigned cases and manage investigations'}
-            {user?.role === 'JUDGE' && 'Process FIRs and manage court proceedings'}
-            {user?.role === 'LAWYER' && 'Represent clients and manage case documents'}
+          <p className="text-lg text-gray-600">
+            {getRoleDescription(user?.role)}
           </p>
         </div>
 
@@ -308,7 +346,7 @@ export const Dashboard = () => {
           {getDashboardCards().map((card, index) => {
             const Icon = card.icon;
             return (
-              <Card key={index} className="card-elegant hover:shadow-elegant transition-all duration-300 group cursor-pointer">
+              <Card key={index} className="hover:shadow-lg transition-all duration-300 group cursor-pointer">
                 <Link to={card.link}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
@@ -320,7 +358,7 @@ export const Dashboard = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">{card.value}</div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-gray-600">
                       {card.description}
                     </p>
                   </CardContent>
@@ -333,10 +371,10 @@ export const Dashboard = () => {
         {/* Quick Actions & Recent Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Quick Actions */}
-          <Card className="card-elegant">
+          <Card className="shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-primary" />
+                <TrendingUp className="h-5 w-5 text-blue-600" />
                 Quick Actions
               </CardTitle>
               <CardDescription>
@@ -347,14 +385,14 @@ export const Dashboard = () => {
               {getQuickActions().map((action, index) => {
                 const Icon = action.icon;
                 return (
-                  <div key={index} className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-muted/50 transition-colors">
+                  <div key={index} className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-primary/10">
-                        <Icon className="h-4 w-4 text-primary" />
+                      <div className="p-2 rounded-lg bg-blue-100">
+                        <Icon className="h-4 w-4 text-blue-600" />
                       </div>
                       <div>
                         <h4 className="font-medium">{action.title}</h4>
-                        <p className="text-sm text-muted-foreground">{action.description}</p>
+                        <p className="text-sm text-gray-600">{action.description}</p>
                       </div>
                     </div>
                     <Button variant="ghost" size="sm" asChild>
@@ -367,10 +405,10 @@ export const Dashboard = () => {
           </Card>
 
           {/* Recent Activity */}
-          <Card className="card-elegant">
+          <Card className="shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-secondary" />
+                <Clock className="h-5 w-5 text-purple-600" />
                 Recent Activity
               </CardTitle>
               <CardDescription>
@@ -379,7 +417,7 @@ export const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {stats.recentActivity.map((activity, index) => (
+                {stats.recentActivity.map((activity) => (
                   <div key={activity.id} className="flex items-start gap-3">
                     <div className="flex-shrink-0 mt-1">
                       {getStatusIcon(activity.status || '')}
@@ -393,10 +431,10 @@ export const Dashboard = () => {
                           </Badge>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">
+                      <p className="text-sm text-gray-600 mt-1">
                         {activity.description}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-xs text-gray-500 mt-1">
                         {activity.time}
                       </p>
                     </div>
@@ -415,12 +453,12 @@ export const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Progress Overview (for demonstration) */}
-        <Card className="card-elegant">
+        {/* Progress Overview */}
+        <Card className="shadow-sm">
           <CardHeader>
             <CardTitle>System Overview</CardTitle>
             <CardDescription>
-              Platform performance and your engagement
+              Platform performance and engagement metrics
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -428,14 +466,14 @@ export const Dashboard = () => {
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Case Resolution Rate</span>
-                  <span className="text-sm text-muted-foreground">87%</span>
+                  <span className="text-sm text-gray-600">87%</span>
                 </div>
                 <Progress value={87} className="h-2" />
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium">Average Response Time</span>
-                  <span className="text-sm text-muted-foreground">2.3 days</span>
+                  <span className="text-sm text-gray-600">2.3 days</span>
                 </div>
                 <Progress value={75} className="h-2" />
               </div>

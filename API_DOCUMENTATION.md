@@ -412,7 +412,7 @@
   }
 }
 ``` -->
-
+<!-- 
 ### Get my profile
 **GET** `/api/police/profile`
 
@@ -431,8 +431,8 @@
     "createdAt": "2025-08-24T08:00:00Z"
   }
 }
-``` -->
-
+``` --> -->
+<!-- 
 ### View my assigned complaints
 **GET** `/api/police/complaints`
 
@@ -453,6 +453,68 @@
         "phone": "+8801234567890"
       },
       "createdAt": "2025-08-24T09:00:00Z"
+    }
+  ]
+}
+``` -->
+
+
+### Get complaint details
+**GET** `/api/police/complaints/{complaintId}`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "id": "complaint_id",
+    "title": "Theft Report",
+    "description": "Bike stolen from parking",
+    "area": "Dhanmondi Police Station",
+    "status": "UNDER_INVESTIGATION",
+    "complainantId": {
+      "name": "John Doe",
+      "nid": "1234567890123",
+      "phone": "+8801234567890",
+      "email": "john@example.com",
+      "address": "123 Main St, Dhaka"
+    },
+    "assignedOfficerIds": [
+      {
+        "name": "Officer Smith",
+        "pid": "P123456",
+        "rank": "Inspector",
+        "station": "Dhanmondi Police Station"
+      }
+    ],
+    "attachments": [
+      {
+        "fileName": "evidence.jpg",
+        "ipfsHash": "QmHash123",
+        "fileSize": 245760,
+        "uploadedAt": "2025-08-24T10:00:00Z"
+      }
+    ],
+    "hasFIR": false,
+    "fir": null,
+    "createdAt": "2025-08-24T09:00:00Z"
+  }
+}
+```
+
+### Get all judges (for FIR submission)
+**GET** `/api/police/judges`
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "judge_id",
+      "name": "Justice Rahman",
+      "courtName": "Dhaka Metropolitan Court",
+      "jid": "J123456"
     }
   ]
 }
@@ -501,8 +563,9 @@
   }
 }
 ```
+  <!-- 7:26 pm  -->
 
-### Get all judges
+<!-- ### Get all judges
 **GET** `/api/police/judges`
 
 **Response:**
@@ -518,7 +581,8 @@
     }
   ]
 }
-```
+``` -->
+
 
 ### Submit additional evidence for complaint
 **POST** `/api/police/complaints/{complaintId}/evidence`
@@ -547,7 +611,7 @@
   }
 }
 ```
-
+<!-- 
 ### Get my assigned cases
 **GET** `/api/police/cases`
 
@@ -571,7 +635,8 @@
     }
   ]
 }
-```
+``` -->
+
 
 ### Submit additional evidence for case
 **POST** `/api/police/cases/{caseId}/evidence`
@@ -600,7 +665,7 @@
   }
 }
 ```
-
+<!-- 
 ### Get my notifications
 **GET** `/api/police/notifications`
 
@@ -663,7 +728,8 @@
     "modifiedCount": 8
   }
 }
-```
+``` -->
+
 
 ## OC (Officer in Charge) Operations
 

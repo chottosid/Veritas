@@ -234,6 +234,47 @@ router.get("/complaints", authenticateToken, async (req, res) => {
   }
 });
 
+// Get complaint details
+router.get("/complaints/:complaintId", authenticateToken, async (req, res) => {
+  try {
+    const policeId = req.user.id;
+    const { complaintId } = req.params;
+
+    const complaint = await Complaint.findOne({
+      _id: complaintId,
+      assignedOfficerIds: policeId,
+    })
+      .populate("complainantId", "name nid phone email address")
+      .populate("assignedOfficerIds", "name pid rank station");
+
+    if (!complaint) {
+      return res.status(404).json({
+        success: false,
+        message: "Complaint not found or not assigned to you",
+      });
+    }
+
+    // Check if FIR already exists for this complaint
+    const existingFir = await FIR.findOne({ complaintId }).populate("submittedToJudge", "name courtName");
+
+    res.json({
+      success: true,
+      data: {
+        ...complaint.toObject(),
+        hasFIR: !!existingFir,
+        fir: existingFir || null,
+      },
+    });
+  } catch (error) {
+    console.error("Get complaint details error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get complaint details",
+      error: error.message,
+    });
+  }
+});
+
 // Convert complaint to FIR
 router.post(
   "/complaints/:complaintId/fir",

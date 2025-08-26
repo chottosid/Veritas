@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Layout } from "@/components/layout/Layout";
+import { useAuthStore } from "@/store/authStore";
 import { api } from "@/lib/api";
 import { 
   User, 
@@ -36,8 +37,24 @@ interface CitizenProfile {
   createdAt: string;
 }
 
+interface PoliceProfile {
+  _id: string;
+  name: string;
+  address: string;
+  pid: string;
+  rank: string;
+  station: string;
+  isOC: boolean;
+  phone?: string;
+  email?: string;
+  createdAt: string;
+}
+
+type UserProfile = CitizenProfile | PoliceProfile;
+
 export const Profile = () => {
-  const [profile, setProfile] = useState<CitizenProfile | null>(null);
+  const { user } = useAuthStore();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -56,12 +73,48 @@ export const Profile = () => {
     fetchProfile();
   }, []);
 
+  const getProfileEndpoint = () => {
+    switch (user?.role) {
+      case 'POLICE':
+        return '/police/profile';
+      case 'JUDGE':
+        return '/judges/profile';
+      case 'LAWYER':
+        return '/lawyers/profile';
+      default:
+        return '/citizens/profile';
+    }
+  };
+
+  const isPoliceProfile = (profile: UserProfile): profile is PoliceProfile => {
+    return 'pid' in profile;
+  };
+
+  const isCitizenProfile = (profile: UserProfile): profile is CitizenProfile => {
+    return 'nid' in profile;
+  };
+
+  const getRoleDisplayName = () => {
+    switch (user?.role) {
+      case 'POLICE':
+        return user.isOC ? 'Officer in Charge' : 'Police Officer';
+      case 'JUDGE':
+        return 'Judge';
+      case 'LAWYER':
+        return 'Lawyer';
+      case 'CITIZEN':
+      default:
+        return 'Citizen';
+    }
+  };
+
   const fetchProfile = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const response = await api.get('/citizens/profile');
+      const endpoint = getProfileEndpoint();
+      const response = await api.get(endpoint);
       
       if (response.data.success) {
         const profileData = response.data.data;
@@ -106,9 +159,8 @@ export const Profile = () => {
       setSaving(true);
       setError(null);
       
-      // Note: This endpoint doesn't exist in the API documentation
-      // You would need to implement PUT /api/citizens/profile in the backend
-      const response = await api.put('/citizens/profile', editForm);
+      const endpoint = getProfileEndpoint();
+      const response = await api.put(endpoint, editForm);
       
       if (response.data.success) {
         setProfile({ ...profile!, ...editForm });
@@ -356,15 +408,17 @@ export const Profile = () => {
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-3">
-                        <Calendar className="h-5 w-5 text-muted-foreground" />
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">Date of Birth</p>
-                          <p className="font-medium">
-                            {formatDate(profile.dateOfBirth)} ({calculateAge(profile.dateOfBirth)} years old)
-                          </p>
+                      {isCitizenProfile(profile) && profile.dateOfBirth && (
+                        <div className="flex items-center gap-3">
+                          <Calendar className="h-5 w-5 text-muted-foreground" />
+                          <div>
+                            <p className="text-sm font-medium text-muted-foreground">Date of Birth</p>
+                            <p className="font-medium">
+                              {formatDate(profile.dateOfBirth)} ({calculateAge(profile.dateOfBirth)} years old)
+                            </p>
+                          </div>
                         </div>
-                      </div>
+                      )}
                       
                       <div className="flex items-start gap-3 md:col-span-2">
                         <MapPin className="h-5 w-5 text-muted-foreground mt-1" />
@@ -383,20 +437,82 @@ export const Profile = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <CreditCard className="h-5 w-5" />
-                    Government Information
+                    {isPoliceProfile(profile) ? 'Service Information' : 'Government Information'}
                   </CardTitle>
                   <CardDescription>
                     Official identification details (read-only)
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-3">
-                    <CreditCard className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">National ID (NID)</p>
-                      <p className="font-medium text-lg">{profile.nid}</p>
-                    </div>
-                  </div>
+                <CardContent className="space-y-4">
+                  {isCitizenProfile(profile) && (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <CreditCard className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">National ID (NID)</p>
+                          <p className="font-medium text-lg">{profile.nid}</p>
+                        </div>
+                      </div>
+                      
+                      {profile.dateOfBirth && (
+                        <>
+                          <Separator />
+                          <div className="flex items-center gap-3">
+                            <Calendar className="h-5 w-5 text-muted-foreground" />
+                            <div>
+                              <p className="text-sm font-medium text-muted-foreground">Date of Birth</p>
+                              <p className="font-medium text-lg">
+                                {new Date(profile.dateOfBirth).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
+                  
+                  {isPoliceProfile(profile) && (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <Shield className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Police ID (PID)</p>
+                          <p className="font-medium text-lg">{profile.pid}</p>
+                        </div>
+                      </div>
+                      
+                      <Separator />
+                      
+                      <div className="flex items-center gap-3">
+                        <User className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Rank</p>
+                          <p className="font-medium text-lg">{profile.rank}</p>
+                        </div>
+                      </div>
+                      
+                      <Separator />
+                      
+                      <div className="flex items-center gap-3">
+                        <MapPin className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Station</p>
+                          <p className="font-medium text-lg">{profile.station}</p>
+                        </div>
+                      </div>
+                      
+                      {profile.isOC && (
+                        <>
+                          <Separator />
+                          <div className="flex items-center gap-3">
+                            <Badge className="bg-primary/10 text-primary border-primary/20">
+                              Officer in Charge (OC)
+                            </Badge>
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -412,6 +528,13 @@ export const Profile = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Role</span>
+                    <Badge className="bg-primary/10 text-primary border-primary/20">
+                      {getRoleDisplayName()}
+                    </Badge>
+                  </div>
+                  
                   <div className="flex items-center justify-between">
                     <span className="text-sm">Account Status</span>
                     <Badge className="bg-green-100 text-green-800 border-green-200">

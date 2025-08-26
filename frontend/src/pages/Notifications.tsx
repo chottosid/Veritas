@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Layout } from "@/components/layout/Layout";
+import { useAuthStore } from "@/store/authStore";
 import { api } from "@/lib/api";
 import { 
   Bell, 
@@ -58,6 +59,7 @@ interface Pagination {
 }
 
 export const Notifications = () => {
+  const { user } = useAuthStore();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     currentPage: 1,
@@ -75,6 +77,20 @@ export const Notifications = () => {
   const [lastPolled, setLastPolled] = useState<Date>(new Date());
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
 
+  const getNotificationEndpoint = () => {
+    switch (user?.role) {
+      case 'POLICE':
+        return '/police/notifications';
+      case 'JUDGE':
+        return '/judges/notifications';
+      case 'LAWYER':
+        return '/lawyers/notifications';
+      case 'CITIZEN':
+      default:
+        return '/citizens/notifications';
+    }
+  };
+
   const fetchNotifications = useCallback(async (page = 1, unreadOnly = false, silent = false) => {
     try {
       if (!silent) setLoading(true);
@@ -86,7 +102,8 @@ export const Notifications = () => {
         unreadOnly: unreadOnly.toString()
       });
       
-      const response = await api.get(`/citizens/notifications?${params}`);
+      const endpoint = getNotificationEndpoint();
+      const response = await api.get(`${endpoint}?${params}`);
       
       if (response.data.success) {
         setNotifications(response.data.data);
@@ -143,7 +160,8 @@ export const Notifications = () => {
 
   const markAsRead = async (notificationId: string) => {
     try {
-      const response = await api.put(`/citizens/notifications/${notificationId}/read`);
+      const endpoint = getNotificationEndpoint();
+      const response = await api.put(`${endpoint}/${notificationId}/read`);
       
       if (response.data.success) {
         setNotifications(prev => 
@@ -162,7 +180,8 @@ export const Notifications = () => {
   const markAllAsRead = async () => {
     try {
       setMarkingAllRead(true);
-      const response = await api.put('/citizens/notifications/read-all');
+      const endpoint = getNotificationEndpoint();
+      const response = await api.put(`${endpoint}/read-all`);
       
       if (response.data.success) {
         setNotifications(prev => 

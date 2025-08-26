@@ -18,7 +18,8 @@ import {
   Search,
   Filter,
   Eye,
-  FileBarChart
+  FileBarChart,
+  Scale
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -399,7 +400,8 @@ export const PoliceComplaints = () => {
                           
                           {complaint.status === 'UNDER_INVESTIGATION' && (
                             <Button size="sm" asChild>
-                              <Link to={`/police/complaints/${complaint._id}/fir`}>
+                              <Link to={`/police/complaints/${complaint._id}`}>
+                                <Scale className="h-4 w-4 mr-2" />
                                 Register FIR
                               </Link>
                             </Button>

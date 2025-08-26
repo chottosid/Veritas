@@ -18,6 +18,7 @@ import {
   TrendingUp,
   Activity,
   User,
+  Users,
   Shield,
   Building2
 } from "lucide-react";
@@ -353,6 +354,60 @@ export const PoliceDashboard = () => {
             </Card>
           </div>
 
+          {/* OC Management Section */}
+          {user?.isOC && (
+            <Card className="card-elegant mb-8">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5 text-blue-600" />
+                  Officer in Charge Dashboard
+                </CardTitle>
+                <CardDescription>
+                  Manage your station and assign officers to complaints
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card className="border-l-4 border-l-yellow-400">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-600">Pending Assignments</p>
+                          <p className="text-2xl font-bold text-yellow-600">-</p>
+                        </div>
+                        <Clock className="h-8 w-8 text-yellow-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card className="border-l-4 border-l-blue-400">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-600">Station Officers</p>
+                          <p className="text-2xl font-bold text-blue-600">-</p>
+                        </div>
+                        <Users className="h-8 w-8 text-blue-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card className="border-l-4 border-l-green-400">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-600">Assigned Today</p>
+                          <p className="text-2xl font-bold text-green-600">-</p>
+                        </div>
+                        <CheckCircle className="h-8 w-8 text-green-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
             {/* Recent Activity */}
@@ -429,6 +484,16 @@ export const PoliceDashboard = () => {
                   </Button>
 
                   <Button asChild variant="outline" className="justify-start h-auto p-4">
+                    <Link to="/police/judges">
+                      <Users className="h-5 w-5 mr-3" />
+                      <div className="text-left">
+                        <div className="font-medium">View Judges</div>
+                        <div className="text-sm opacity-70">Browse judges directory</div>
+                      </div>
+                    </Link>
+                  </Button>
+
+                  <Button asChild variant="outline" className="justify-start h-auto p-4">
                     <Link to="/notifications">
                       <Bell className="h-5 w-5 mr-3" />
                       <div className="text-left">
@@ -439,15 +504,27 @@ export const PoliceDashboard = () => {
                   </Button>
 
                   {user?.isOC && (
-                    <Button asChild variant="outline" className="justify-start h-auto p-4">
-                      <Link to="/police/oc/assignments">
-                        <User className="h-5 w-5 mr-3" />
-                        <div className="text-left">
-                          <div className="font-medium">Assign Officers</div>
-                          <div className="text-sm opacity-70">Manage complaint assignments</div>
-                        </div>
-                      </Link>
-                    </Button>
+                    <>
+                      <Button asChild variant="outline" className="justify-start h-auto p-4">
+                        <Link to="/police/oc/complaints">
+                          <FileText className="h-5 w-5 mr-3" />
+                          <div className="text-left">
+                            <div className="font-medium">Pending Complaints</div>
+                            <div className="text-sm opacity-70">Assign officers to complaints</div>
+                          </div>
+                        </Link>
+                      </Button>
+                      
+                      <Button asChild variant="outline" className="justify-start h-auto p-4">
+                        <Link to="/police/oc/officers">
+                          <Users className="h-5 w-5 mr-3" />
+                          <div className="text-left">
+                            <div className="font-medium">Station Officers</div>
+                            <div className="text-sm opacity-70">Manage your station officers</div>
+                          </div>
+                        </Link>
+                      </Button>
+                    </>
                   )}
                 </div>
               </CardContent>

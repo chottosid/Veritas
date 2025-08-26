@@ -39,6 +39,7 @@ const seedData = async () => {
         isOC: true,
         password: hashedPassword,
       },
+      
       {
         name: "Md. Karim Uddin",
         address: "Ramna Police Station, Dhaka-1000",

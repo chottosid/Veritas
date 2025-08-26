@@ -20,6 +20,11 @@ import { Notifications } from "./pages/Notifications";
 import { PoliceDashboard } from "./pages/PoliceDashboard";
 import { PoliceComplaints } from "./pages/PoliceComplaints";
 import { PoliceCases } from "./pages/PoliceCases";
+import { PoliceComplaintDetail } from "./pages/PoliceComplaintDetail";
+import { PoliceCaseDetail } from "./pages/PoliceCaseDetail";
+import { PoliceJudges } from "./pages/PoliceJudges";
+import { OCComplaints } from "./pages/OCComplaints";
+import { OCOfficers } from "./pages/OCOfficers";
 
 const queryClient = new QueryClient();
 
@@ -128,6 +133,48 @@ const App = () => (
             element={
               <ProtectedRoute requiredRole="POLICE">
                 <PoliceCases />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/police/judges" 
+            element={
+              <ProtectedRoute requiredRole="POLICE">
+                <PoliceJudges />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/police/complaints/:complaintId" 
+            element={
+              <ProtectedRoute requiredRole="POLICE">
+                <PoliceComplaintDetail />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/police/cases/:caseId" 
+            element={
+              <ProtectedRoute requiredRole="POLICE">
+                <PoliceCaseDetail />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* OC (Officer in Charge) Routes */}
+          <Route 
+            path="/police/oc/complaints" 
+            element={
+              <ProtectedRoute requiredRole="POLICE">
+                <OCComplaints />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/police/oc/officers" 
+            element={
+              <ProtectedRoute requiredRole="POLICE">
+                <OCOfficers />
               </ProtectedRoute>
             } 
           />

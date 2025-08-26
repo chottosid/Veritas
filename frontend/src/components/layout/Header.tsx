@@ -31,18 +31,35 @@ export const Header = () => {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isNotificationDropdownOpen, setIsNotificationDropdownOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationSummary>({
     totalUnread: 0,
     recent: []
   });
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
 
+  // Get notification endpoint based on user role
+  const getNotificationEndpoint = () => {
+    switch (user?.role) {
+      case 'POLICE':
+        return '/police/notifications';
+      case 'JUDGE':
+        return '/judges/notifications';
+      case 'LAWYER':
+        return '/lawyers/notifications';
+      case 'CITIZEN':
+      default:
+        return '/citizens/notifications';
+    }
+  };
+
   // Fetch notification summary
   const fetchNotificationSummary = useCallback(async () => {
     if (!user) return;
     
     try {
-      const response = await api.get('/citizens/notifications?limit=5&unreadOnly=false');
+      const endpoint = getNotificationEndpoint();
+      const response = await api.get(`${endpoint}?limit=5&unreadOnly=false`);
       if (response.data.success) {
         const unreadCount = response.data.data.filter((n: any) => !n.isRead).length;
         setNotifications({
@@ -70,6 +87,12 @@ export const Header = () => {
     }
   }, [user, fetchNotificationSummary]);
 
+  // Handle navigation and close dropdown
+  const handleNotificationNavigation = () => {
+    setIsNotificationDropdownOpen(false);
+    navigate('/notifications');
+  };
+
   const handleLogout = () => {
     if (pollingInterval) clearInterval(pollingInterval);
     logout();
@@ -84,7 +107,6 @@ export const Header = () => {
     switch (role) {
       case 'CITIZEN': return 'bg-primary/10 text-primary';
       case 'POLICE': return 'bg-secondary/10 text-secondary';
-      case 'OC': return 'bg-tertiary/10 text-tertiary';
       case 'JUDGE': return 'bg-warning/10 text-warning';
       case 'LAWYER': return 'bg-success/10 text-success';
       default: return 'bg-muted/10 text-muted-foreground';
@@ -114,7 +136,7 @@ export const Header = () => {
                   Complaints
                 </Link>
               )}
-              {(user.role === 'POLICE' || user.role === 'OC') && (
+              {user.role === 'POLICE' && (
                 <Link to="/police/complaints" className="text-foreground hover:text-primary transition-colors">
                   Complaints
                 </Link>
@@ -124,9 +146,24 @@ export const Header = () => {
                   Cases
                 </Link>
               )}
-              {(user.role === 'POLICE' || user.role === 'OC') && (
+              {user.role === 'POLICE' && (
                 <Link to="/police/cases" className="text-foreground hover:text-primary transition-colors">
                   Cases
+                </Link>
+              )}
+              {user.role === 'POLICE' && (
+                <Link to="/police/judges" className="text-foreground hover:text-primary transition-colors">
+                  Judges
+                </Link>
+              )}
+              {user.role === 'POLICE' && user.isOC && (
+                <Link to="/police/oc/complaints" className="text-foreground hover:text-primary transition-colors">
+                  OC Complaints
+                </Link>
+              )}
+              {user.role === 'POLICE' && user.isOC && (
+                <Link to="/police/oc/officers" className="text-foreground hover:text-primary transition-colors">
+                  Station Officers
                 </Link>
               )}
               {(user.role === 'JUDGE' || user.role === 'LAWYER') && (
@@ -157,7 +194,7 @@ export const Header = () => {
           {user ? (
             <>
               {/* Notifications */}
-              <DropdownMenu>
+              <DropdownMenu open={isNotificationDropdownOpen} onOpenChange={setIsNotificationDropdownOpen}>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="relative">
                     {notifications.totalUnread > 0 ? (
@@ -175,7 +212,7 @@ export const Header = () => {
                 <DropdownMenuContent className="w-80" align="end">
                   <div className="flex items-center justify-between p-4 border-b">
                     <h4 className="font-semibold">Notifications</h4>
-                    <Button variant="ghost" size="sm" onClick={() => navigate('/notifications')}>
+                    <Button variant="ghost" size="sm" onClick={handleNotificationNavigation}>
                       View All
                     </Button>
                   </div>
@@ -186,7 +223,7 @@ export const Header = () => {
                         <DropdownMenuItem
                           key={notification._id}
                           className="p-4 flex-col items-start cursor-pointer"
-                          onClick={() => navigate('/notifications')}
+                          onClick={handleNotificationNavigation}
                         >
                           <div className="flex items-start justify-between w-full">
                             <div className="flex-1 space-y-1">
@@ -220,7 +257,7 @@ export const Header = () => {
                         variant="ghost"
                         size="sm"
                         className="w-full"
-                        onClick={() => navigate('/notifications')}
+                        onClick={handleNotificationNavigation}
                       >
                         View All Notifications
                       </Button>
@@ -246,7 +283,7 @@ export const Header = () => {
                       <p className="font-medium">{user.name}</p>
                       <p className="text-xs text-muted-foreground">{user.email}</p>
                       <Badge className={`w-fit text-xs ${getRoleColor(user.role)}`}>
-                        {user.role === 'OC' ? 'Officer in Charge' : user.role}
+                        {user.role === 'POLICE' && user.isOC ? 'Officer in Charge' : user.role}
                       </Badge>
                     </div>
                   </div>
@@ -312,7 +349,7 @@ export const Header = () => {
                     Complaints
                   </Link>
                 )}
-                {(user.role === 'POLICE' || user.role === 'OC') && (
+                {user.role === 'POLICE' && (
                   <Link 
                     to="/police/complaints" 
                     className="block px-4 py-2 text-foreground hover:bg-muted rounded-md transition-colors"
@@ -330,13 +367,40 @@ export const Header = () => {
                     Cases
                   </Link>
                 )}
-                {(user.role === 'POLICE' || user.role === 'OC') && (
+                {user.role === 'POLICE' && (
                   <Link 
                     to="/police/cases" 
                     className="block px-4 py-2 text-foreground hover:bg-muted rounded-md transition-colors"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Cases
+                  </Link>
+                )}
+                {user.role === 'POLICE' && (
+                  <Link 
+                    to="/police/judges" 
+                    className="block px-4 py-2 text-foreground hover:bg-muted rounded-md transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Judges
+                  </Link>
+                )}
+                {user.role === 'POLICE' && user.isOC && (
+                  <Link 
+                    to="/police/oc/complaints" 
+                    className="block px-4 py-2 text-foreground hover:bg-muted rounded-md transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    OC Complaints
+                  </Link>
+                )}
+                {user.role === 'POLICE' && user.isOC && (
+                  <Link 
+                    to="/police/oc/officers" 
+                    className="block px-4 py-2 text-foreground hover:bg-muted rounded-md transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Station Officers
                   </Link>
                 )}
                 {(user.role === 'JUDGE' || user.role === 'LAWYER') && (
