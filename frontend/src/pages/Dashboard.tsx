@@ -226,7 +226,7 @@ export const Dashboard = () => {
     switch (user?.role) {
       case 'CITIZEN':
         return [
-          { title: 'File New Complaint', description: 'Report an incident', link: '/complaints/new', icon: Plus, variant: 'btn-hero' },
+          { title: 'File New Complaint', description: 'Report an incident', link: '/file-complaint', icon: Plus, variant: 'btn-hero' },
           { title: 'Find Lawyer', description: 'Get legal representation', link: '/lawyers', icon: Users, variant: 'btn-justice' },
           { title: 'Track Case', description: 'View case progress', link: '/cases', icon: Eye, variant: 'btn-justice' }
         ];

@@ -139,7 +139,7 @@
   ]
 }
 ```
-
+<!-- 
 ### File a new complaint
 **POST** `/api/citizens/complaints`
 
@@ -205,9 +205,9 @@
     "createdAt": "2025-08-24T10:00:00Z"
   }
 }
-```
+``` -->
 
-### Get all available lawyers
+<!-- ### Get all available lawyers
 **GET** `/api/citizens/lawyers`
 
 **Response:**
@@ -223,7 +223,7 @@
     }
   ]
 }
-```
+``` -->
 
 ### Request a lawyer for a case
 **POST** `/api/citizens/cases/{caseId}/request-lawyer`

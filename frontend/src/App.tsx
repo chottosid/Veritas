@@ -12,6 +12,10 @@ import { FileComplaint } from "./pages/FileComplaint";
 import NotFound from "./pages/NotFound";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { ComplaintDetail } from "./pages/ComplaintDetail";
+import { FindLawyer } from "./pages/FindLawyer";
+import { MyCases } from "./pages/MyCases";
+import { CaseDetail } from "./pages/CaseDetail";
+import { Profile } from "./pages/Profile";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +58,38 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <FileComplaint />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/lawyers" 
+            element={
+              <ProtectedRoute>
+                <FindLawyer />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/cases" 
+            element={
+              <ProtectedRoute>
+                <MyCases />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/cases/:caseId" 
+            element={
+              <ProtectedRoute>
+                <CaseDetail />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/profile" 
+            element={
+              <ProtectedRoute>
+                <Profile />
               </ProtectedRoute>
             } 
           />
