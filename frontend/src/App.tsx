@@ -16,6 +16,7 @@ import { FindLawyer } from "./pages/FindLawyer";
 import { MyCases } from "./pages/MyCases";
 import { CaseDetail } from "./pages/CaseDetail";
 import { Profile } from "./pages/Profile";
+import { Notifications } from "./pages/Notifications";
 
 const queryClient = new QueryClient();
 
@@ -90,6 +91,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/notifications" 
+            element={
+              <ProtectedRoute>
+                <Notifications />
               </ProtectedRoute>
             } 
           />

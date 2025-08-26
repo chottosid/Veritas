@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bell, User, LogOut, Settings, Menu, X } from 'lucide-react';
+import { Bell, User, LogOut, Settings, Menu, X, BellRing } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -12,14 +12,66 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/authStore';
+import { api } from '@/lib/api';
 import logo from '@/assets/logo.png';
+
+interface NotificationSummary {
+  totalUnread: number;
+  recent: Array<{
+    _id: string;
+    title: string;
+    message: string;
+    type: string;
+    isRead: boolean;
+    createdAt: string;
+  }>;
+}
 
 export const Header = () => {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationSummary>({
+    totalUnread: 0,
+    recent: []
+  });
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+
+  // Fetch notification summary
+  const fetchNotificationSummary = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      const response = await api.get('/citizens/notifications?limit=5&unreadOnly=false');
+      if (response.data.success) {
+        const unreadCount = response.data.data.filter((n: any) => !n.isRead).length;
+        setNotifications({
+          totalUnread: unreadCount,
+          recent: response.data.data.slice(0, 3)
+        });
+      }
+    } catch (err) {
+      console.error('Failed to fetch notifications:', err);
+    }
+  }, [user]);
+
+  // Start notification polling
+  useEffect(() => {
+    if (user) {
+      fetchNotificationSummary();
+      
+      // Poll every 30 seconds
+      const interval = setInterval(fetchNotificationSummary, 30000);
+      setPollingInterval(interval);
+      
+      return () => {
+        if (interval) clearInterval(interval);
+      };
+    }
+  }, [user, fetchNotificationSummary]);
 
   const handleLogout = () => {
+    if (pollingInterval) clearInterval(pollingInterval);
     logout();
     navigate('/');
   };
@@ -87,12 +139,77 @@ export const Header = () => {
           {user ? (
             <>
               {/* Notifications */}
-              <Button variant="ghost" size="sm" className="relative">
-                <Bell className="h-4 w-4" />
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
-                  3
-                </Badge>
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="relative">
+                    {notifications.totalUnread > 0 ? (
+                      <BellRing className="h-4 w-4 text-primary" />
+                    ) : (
+                      <Bell className="h-4 w-4" />
+                    )}
+                    {notifications.totalUnread > 0 && (
+                      <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-primary">
+                        {notifications.totalUnread > 9 ? '9+' : notifications.totalUnread}
+                      </Badge>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-80" align="end">
+                  <div className="flex items-center justify-between p-4 border-b">
+                    <h4 className="font-semibold">Notifications</h4>
+                    <Button variant="ghost" size="sm" onClick={() => navigate('/notifications')}>
+                      View All
+                    </Button>
+                  </div>
+                  
+                  {notifications.recent.length > 0 ? (
+                    <div className="max-h-80 overflow-y-auto">
+                      {notifications.recent.map((notification) => (
+                        <DropdownMenuItem
+                          key={notification._id}
+                          className="p-4 flex-col items-start cursor-pointer"
+                          onClick={() => navigate('/notifications')}
+                        >
+                          <div className="flex items-start justify-between w-full">
+                            <div className="flex-1 space-y-1">
+                              <p className={`text-sm font-medium ${!notification.isRead ? 'text-primary' : ''}`}>
+                                {notification.title}
+                              </p>
+                              <p className="text-xs text-muted-foreground line-clamp-2">
+                                {notification.message}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(notification.createdAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                            {!notification.isRead && (
+                              <div className="w-2 h-2 bg-primary rounded-full flex-shrink-0 mt-1 ml-2" />
+                            )}
+                          </div>
+                        </DropdownMenuItem>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-8 text-center text-muted-foreground">
+                      <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No notifications</p>
+                    </div>
+                  )}
+                  
+                  {notifications.recent.length > 0 && (
+                    <div className="p-2 border-t">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => navigate('/notifications')}
+                      >
+                        View All Notifications
+                      </Button>
+                    </div>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {/* User Menu */}
               <DropdownMenu>

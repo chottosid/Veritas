@@ -58,7 +58,7 @@
   }
 }
 ``` -->
-
+<!-- 
 ### Get my profile
 **GET** `/api/citizens/profile`
 
@@ -77,7 +77,7 @@
     "createdAt": "2025-08-24T10:00:00Z"
   }
 }
-```
+``` -->
 
 <!-- ### View my complaints
 **GET** `/api/citizens/complaints`
@@ -112,7 +112,7 @@
   ]
 }
 ``` -->
-
+<!-- 
 ### View my cases
 **GET** `/api/citizens/cases`
 
@@ -138,7 +138,7 @@
     }
   ]
 }
-```
+``` -->
 <!-- 
 ### File a new complaint
 **POST** `/api/citizens/complaints`
