@@ -3,7 +3,7 @@
 **Authentication:** Most endpoints require a JWT token in the Authorization header (`Authorization: Bearer your_token`). Only registration and login are public.
 
 ## Citizens
-
+<!-- 
 ### Register a new citizen
 **POST** `/api/citizens/register`
 
@@ -18,8 +18,8 @@
   "nid": "1234567890123",
   "password": "securepassword123"
 }
-```
-
+``` -->
+<!-- 
 **Response:**
 ```json
 {
@@ -32,8 +32,8 @@
     "token": "jwt_token_here"
   }
 }
-```
-
+``` -->
+<!-- 
 ### Login
 **POST** `/api/citizens/login`
 
@@ -43,9 +43,9 @@
   "nid": "1234567890123",
   "password": "securepassword123"
 }
-```
+``` -->
 
-**Response:**
+<!-- **Response:**
 ```json
 {
   "success": true,
@@ -57,7 +57,7 @@
     "token": "jwt_token_here"
   }
 }
-```
+``` -->
 
 ### Get my profile
 **GET** `/api/citizens/profile`
@@ -79,7 +79,7 @@
 }
 ```
 
-### View my complaints
+<!-- ### View my complaints
 **GET** `/api/citizens/complaints`
 
 **Response:**
@@ -111,7 +111,7 @@
     }
   ]
 }
-```
+``` -->
 
 ### View my cases
 **GET** `/api/citizens/cases`
@@ -139,7 +139,7 @@
   ]
 }
 ```
-
+<!-- 
 ### File a new complaint
 **POST** `/api/citizens/complaints`
 
@@ -174,7 +174,7 @@
     "createdAt": "2025-08-24T10:00:00Z"
   }
 }
-```
+``` -->
 
 ### Get complaint details
 **GET** `/api/citizens/complaints/{complaintId}`

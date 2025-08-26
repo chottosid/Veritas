@@ -7,6 +7,9 @@ import Index from "./pages/Index";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { Dashboard } from "./pages/Dashboard";
+import { MyComplaints } from "./pages/MyComplaints";
+import { ComplaintDetail } from "./pages/ComplaintDetail";
+import { FileComplaint } from "./pages/FileComplaint";
 import NotFound from "./pages/NotFound";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
@@ -27,6 +30,30 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/complaints" 
+            element={
+              <ProtectedRoute>
+                <MyComplaints />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/complaints/:complaintId" 
+            element={
+              <ProtectedRoute>
+                <ComplaintDetail />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/file-complaint" 
+            element={
+              <ProtectedRoute>
+                <FileComplaint />
               </ProtectedRoute>
             } 
           />

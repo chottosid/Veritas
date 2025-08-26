@@ -31,7 +31,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       token: null,
       isAuthenticated: false,
@@ -41,6 +41,7 @@ export const useAuthStore = create<AuthState>()(
       },
       logout: () => {
         localStorage.removeItem('token');
+        localStorage.removeItem('user');
         set({ user: null, token: null, isAuthenticated: false });
       },
       updateUser: (updates) =>
