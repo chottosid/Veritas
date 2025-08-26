@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { 
   FileText, 
   Scale, 
@@ -20,7 +20,7 @@ import { Separator } from '@/components/ui/separator';
 import { Layout } from '@/components/layout/Layout';
 import { useAuthStore } from '@/store/authStore';
 import { useToast } from '@/hooks/use-toast';
-import api from '@/lib/api';
+import { api } from '@/lib/api';
 
 interface DashboardStats {
   complaints: number;
@@ -39,6 +39,12 @@ interface DashboardStats {
 export const Dashboard = () => {
   const { user } = useAuthStore();
   const { toast } = useToast();
+  
+  // Redirect police users to their specific dashboard
+  if (user?.role === 'POLICE') {
+    return <Navigate to="/police/dashboard" replace />;
+  }
+  
   const [stats, setStats] = useState<DashboardStats>({
     complaints: 0,
     cases: 0,

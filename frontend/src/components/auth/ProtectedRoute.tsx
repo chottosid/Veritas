@@ -5,12 +5,14 @@ import { useAuthStore, UserRole } from '@/store/authStore';
 interface ProtectedRouteProps {
   children: ReactNode;
   allowedRoles?: UserRole[];
+  requiredRole?: UserRole;
   requireAuth?: boolean;
 }
 
 export const ProtectedRoute = ({ 
   children, 
   allowedRoles, 
+  requiredRole,
   requireAuth = true 
 }: ProtectedRouteProps) => {
   const { isAuthenticated, user } = useAuthStore();
@@ -21,6 +23,10 @@ export const ProtectedRoute = ({
 
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
     return <Navigate to="/unauthorized" replace />;
+  }
+
+  if (requiredRole && user && user.role !== requiredRole) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;

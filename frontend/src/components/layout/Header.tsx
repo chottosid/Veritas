@@ -103,15 +103,33 @@ export const Header = () => {
         <nav className="hidden md:flex items-center space-x-6">
           {user ? (
             <>
-              <Link to="/dashboard" className="text-foreground hover:text-primary transition-colors">
+              <Link 
+                to={user.role === 'POLICE' ? "/police/dashboard" : "/dashboard"} 
+                className="text-foreground hover:text-primary transition-colors"
+              >
                 Dashboard
               </Link>
-              {(user.role === 'CITIZEN' || user.role === 'POLICE' || user.role === 'OC') && (
+              {user.role === 'CITIZEN' && (
                 <Link to="/complaints" className="text-foreground hover:text-primary transition-colors">
                   Complaints
                 </Link>
               )}
-              {(user.role === 'CITIZEN' || user.role === 'JUDGE' || user.role === 'LAWYER') && (
+              {(user.role === 'POLICE' || user.role === 'OC') && (
+                <Link to="/police/complaints" className="text-foreground hover:text-primary transition-colors">
+                  Complaints
+                </Link>
+              )}
+              {user.role === 'CITIZEN' && (
+                <Link to="/cases" className="text-foreground hover:text-primary transition-colors">
+                  Cases
+                </Link>
+              )}
+              {(user.role === 'POLICE' || user.role === 'OC') && (
+                <Link to="/police/cases" className="text-foreground hover:text-primary transition-colors">
+                  Cases
+                </Link>
+              )}
+              {(user.role === 'JUDGE' || user.role === 'LAWYER') && (
                 <Link to="/cases" className="text-foreground hover:text-primary transition-colors">
                   Cases
                 </Link>
@@ -279,13 +297,13 @@ export const Header = () => {
             {user ? (
               <>
                 <Link 
-                  to="/dashboard" 
+                  to={user.role === 'POLICE' ? "/police/dashboard" : "/dashboard"}
                   className="block px-4 py-2 text-foreground hover:bg-muted rounded-md transition-colors"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Dashboard
                 </Link>
-                {(user.role === 'CITIZEN' || user.role === 'POLICE' || user.role === 'OC') && (
+                {user.role === 'CITIZEN' && (
                   <Link 
                     to="/complaints" 
                     className="block px-4 py-2 text-foreground hover:bg-muted rounded-md transition-colors"
@@ -294,7 +312,34 @@ export const Header = () => {
                     Complaints
                   </Link>
                 )}
-                {(user.role === 'CITIZEN' || user.role === 'JUDGE' || user.role === 'LAWYER') && (
+                {(user.role === 'POLICE' || user.role === 'OC') && (
+                  <Link 
+                    to="/police/complaints" 
+                    className="block px-4 py-2 text-foreground hover:bg-muted rounded-md transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Complaints
+                  </Link>
+                )}
+                {user.role === 'CITIZEN' && (
+                  <Link 
+                    to="/cases" 
+                    className="block px-4 py-2 text-foreground hover:bg-muted rounded-md transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Cases
+                  </Link>
+                )}
+                {(user.role === 'POLICE' || user.role === 'OC') && (
+                  <Link 
+                    to="/police/cases" 
+                    className="block px-4 py-2 text-foreground hover:bg-muted rounded-md transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Cases
+                  </Link>
+                )}
+                {(user.role === 'JUDGE' || user.role === 'LAWYER') && (
                   <Link 
                     to="/cases" 
                     className="block px-4 py-2 text-foreground hover:bg-muted rounded-md transition-colors"

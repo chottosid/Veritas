@@ -17,6 +17,9 @@ import { MyCases } from "./pages/MyCases";
 import { CaseDetail } from "./pages/CaseDetail";
 import { Profile } from "./pages/Profile";
 import { Notifications } from "./pages/Notifications";
+import { PoliceDashboard } from "./pages/PoliceDashboard";
+import { PoliceComplaints } from "./pages/PoliceComplaints";
+import { PoliceCases } from "./pages/PoliceCases";
 
 const queryClient = new QueryClient();
 
@@ -99,6 +102,32 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Notifications />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* Police Routes */}
+          <Route 
+            path="/police/dashboard" 
+            element={
+              <ProtectedRoute requiredRole="POLICE">
+                <PoliceDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/police/complaints" 
+            element={
+              <ProtectedRoute requiredRole="POLICE">
+                <PoliceComplaints />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/police/cases" 
+            element={
+              <ProtectedRoute requiredRole="POLICE">
+                <PoliceCases />
               </ProtectedRoute>
             } 
           />

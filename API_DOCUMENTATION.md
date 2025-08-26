@@ -279,7 +279,7 @@
   ]
 }
 ```
-
+<!-- 
 ### Get my notifications
 **GET** `/api/citizens/notifications`
 
@@ -345,8 +345,8 @@
     "modifiedCount": 15
   }
 }
-```
-
+<!-- ``` -->
+<!-- 
 ## Police Operations
 
 ### Register
@@ -411,7 +411,7 @@
     "token": "jwt_token_here"
   }
 }
-```
+``` -->
 
 ### Get my profile
 **GET** `/api/police/profile`
@@ -431,7 +431,7 @@
     "createdAt": "2025-08-24T08:00:00Z"
   }
 }
-```
+``` -->
 
 ### View my assigned complaints
 **GET** `/api/police/complaints`
