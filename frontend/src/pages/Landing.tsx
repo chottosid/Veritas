@@ -174,62 +174,78 @@ export const Landing = () => {
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card className="card-elegant hover:shadow-elegant transition-all duration-300 group">
-              <CardHeader>
-                <Badge className="w-fit mb-4 bg-primary/10 text-primary">Citizens</Badge>
-                <CardTitle>For Citizens</CardTitle>
-                <CardDescription>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 max-w-7xl mx-auto">
+            <Card className="relative overflow-hidden bg-white border-0 shadow-xl hover:shadow-2xl transition-all duration-500 group hover:scale-105 transform perspective-1000 hover:rotate-y-2">
+              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-yellow-400 to-yellow-600"></div>
+              <CardHeader className="text-center pb-4 pt-6 bg-gradient-to-br from-slate-50 to-gray-100">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center shadow-lg">
+                  <Users className="h-8 w-8 text-white" />
+                </div>
+                <Badge className="w-fit mx-auto mb-4 bg-yellow-100 text-yellow-800 font-semibold px-4 py-2 rounded-full border border-yellow-200">Citizens</Badge>
+                <CardTitle className="text-xl font-bold text-slate-800">For Citizens</CardTitle>
+                <CardDescription className="text-sm leading-relaxed mt-3 text-slate-600">
                   File complaints, track cases, find lawyers, and stay updated on proceedings.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <Button className="w-full btn-justice" asChild>
+              <CardContent className="pt-4 pb-6 px-6">
+                <Button className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white font-semibold py-3 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl" asChild>
                   <Link to="/register?role=citizen">Register as Citizen</Link>
                 </Button>
               </CardContent>
             </Card>
 
-            <Card className="card-elegant hover:shadow-elegant transition-all duration-300 group">
-              <CardHeader>
-                <Badge className="w-fit mb-4 bg-secondary/10 text-secondary">Law Enforcement</Badge>
-                <CardTitle>For Police</CardTitle>
-                <CardDescription>
+            <Card className="relative overflow-hidden bg-white border-0 shadow-xl hover:shadow-2xl transition-all duration-500 group hover:scale-105 transform perspective-1000 hover:rotate-y-2">
+              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-slate-600 to-slate-800"></div>
+              <CardHeader className="text-center pb-4 pt-6 bg-gradient-to-br from-slate-50 to-gray-100">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-slate-600 to-slate-800 rounded-full flex items-center justify-center shadow-lg">
+                  <Shield className="h-8 w-8 text-white" />
+                </div>
+                <Badge className="w-fit mx-auto mb-4 bg-slate-100 text-slate-800 font-semibold px-4 py-2 rounded-full border border-slate-200">Law Enforcement</Badge>
+                <CardTitle className="text-xl font-bold text-slate-800">For Police</CardTitle>
+                <CardDescription className="text-sm leading-relaxed mt-3 text-slate-600">
                   Manage investigations, file FIRs, submit evidence, and coordinate with courts.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <Button className="w-full btn-justice" asChild>
+              <CardContent className="pt-4 pb-6 px-6">
+                <Button className="w-full bg-gradient-to-r from-slate-600 to-slate-800 hover:from-slate-700 hover:to-slate-900 text-white font-semibold py-3 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl" asChild>
                   <Link to="/register?role=police">Register as Officer</Link>
                 </Button>
               </CardContent>
             </Card>
 
-            <Card className="card-elegant hover:shadow-elegant transition-all duration-300 group">
-              <CardHeader>
-                <Badge className="w-fit mb-4 bg-warning/10 text-warning">Judiciary</Badge>
-                <CardTitle>For Judges</CardTitle>
-                <CardDescription>
+            <Card className="relative overflow-hidden bg-white border-0 shadow-xl hover:shadow-2xl transition-all duration-500 group hover:scale-105 transform perspective-1000 hover:rotate-y-2">
+              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-teal-500 to-teal-700"></div>
+              <CardHeader className="text-center pb-4 pt-6 bg-gradient-to-br from-slate-50 to-gray-100">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-teal-500 to-teal-700 rounded-full flex items-center justify-center shadow-lg">
+                  <Gavel className="h-8 w-8 text-white" />
+                </div>
+                <Badge className="w-fit mx-auto mb-4 bg-teal-100 text-teal-800 font-semibold px-4 py-2 rounded-full border border-teal-200">Judiciary</Badge>
+                <CardTitle className="text-xl font-bold text-slate-800">For Judges</CardTitle>
+                <CardDescription className="text-sm leading-relaxed mt-3 text-slate-600">
                   Process FIRs, create cases, schedule hearings, and deliver verdicts.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <Button className="w-full btn-justice" asChild>
+              <CardContent className="pt-4 pb-6 px-6">
+                <Button className="w-full bg-gradient-to-r from-teal-500 to-teal-700 hover:from-teal-600 hover:to-teal-800 text-white font-semibold py-3 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl" asChild>
                   <Link to="/register?role=judge">Register as Judge</Link>
                 </Button>
               </CardContent>
             </Card>
 
-            <Card className="card-elegant hover:shadow-elegant transition-all duration-300 group lg:col-span-2">
-              <CardHeader>
-                <Badge className="w-fit mb-4 bg-success/10 text-success">Legal Profession</Badge>
-                <CardTitle>For Lawyers</CardTitle>
-                <CardDescription>
+            <Card className="relative overflow-hidden bg-white border-0 shadow-xl hover:shadow-2xl transition-all duration-500 group hover:scale-105 transform perspective-1000 hover:rotate-y-2">
+              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-emerald-500 to-emerald-700"></div>
+              <CardHeader className="text-center pb-4 pt-6 bg-gradient-to-br from-slate-50 to-gray-100">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-full flex items-center justify-center shadow-lg">
+                  <Scale className="h-8 w-8 text-white" />
+                </div>
+                <Badge className="w-fit mx-auto mb-4 bg-emerald-100 text-emerald-800 font-semibold px-4 py-2 rounded-full border border-emerald-200">Legal Profession</Badge>
+                <CardTitle className="text-xl font-bold text-slate-800">For Lawyers</CardTitle>
+                <CardDescription className="text-sm leading-relaxed mt-3 text-slate-600">
                   Represent clients, submit documents, access case files, and communicate with all parties.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <Button className="w-full btn-justice" asChild>
+              <CardContent className="pt-4 pb-6 px-6">
+                <Button className="w-full bg-gradient-to-r from-emerald-500 to-emerald-700 hover:from-emerald-600 hover:to-emerald-800 text-white font-semibold py-3 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl" asChild>
                   <Link to="/register?role=lawyer">Register as Lawyer</Link>
                 </Button>
               </CardContent>
