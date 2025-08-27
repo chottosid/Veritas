@@ -29,6 +29,17 @@ import {
   DialogTrigger,
 } from '../components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '../components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -148,8 +159,10 @@ const LawyerRequests: React.FC = () => {
         );
 
         toast({
-          title: "Success",
-          description: `Request ${status.toLowerCase()} successfully`,
+          title: status === 'ACCEPTED' ? "Request Accepted" : "Request Rejected",
+          description: status === 'ACCEPTED' 
+            ? `You have agreed to represent ${requests.find(r => r.id === requestId)?.citizenId.name} in case ${requests.find(r => r.id === requestId)?.caseId.caseNumber}. The client will be notified.`
+            : `You have declined the request from ${requests.find(r => r.id === requestId)?.citizenId.name}. The client will be notified.`,
         });
       } else {
         throw new Error(`Failed to ${status.toLowerCase()} request`);
@@ -414,25 +427,70 @@ const LawyerRequests: React.FC = () => {
 
                         {request.status === 'PENDING' && (
                           <>
-                            <Button
-                              size="sm"
-                              onClick={() => handleRequestAction(request.id, 'ACCEPTED')}
-                              disabled={actionLoading === request.id}
-                              className="gap-2"
-                            >
-                              <Check className="h-4 w-4" />
-                              Accept
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleRequestAction(request.id, 'REJECTED')}
-                              disabled={actionLoading === request.id}
-                              className="gap-2 hover:bg-red-50 hover:text-red-700 hover:border-red-200"
-                            >
-                              <X className="h-4 w-4" />
-                              Reject
-                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  disabled={actionLoading === request.id}
+                                  className="gap-2"
+                                >
+                                  <Check className="h-4 w-4" />
+                                  Accept
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Accept Legal Representation Request</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to accept the request from {request.citizenId.name} for case {request.caseId.caseNumber}? 
+                                    This will establish you as their legal representative for this case.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleRequestAction(request.id, 'ACCEPTED')}
+                                    disabled={actionLoading === request.id}
+                                    className="bg-green-600 hover:bg-green-700"
+                                  >
+                                    {actionLoading === request.id ? 'Accepting...' : 'Accept Request'}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={actionLoading === request.id}
+                                  className="gap-2 hover:bg-red-50 hover:text-red-700 hover:border-red-200"
+                                >
+                                  <X className="h-4 w-4" />
+                                  Reject
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Reject Legal Representation Request</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to reject the request from {request.citizenId.name} for case {request.caseId.caseNumber}?
+                                    The client will be notified of your decision.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleRequestAction(request.id, 'REJECTED')}
+                                    disabled={actionLoading === request.id}
+                                    className="bg-red-600 hover:bg-red-700"
+                                  >
+                                    {actionLoading === request.id ? 'Rejecting...' : 'Reject Request'}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </>
                         )}
                       </div>

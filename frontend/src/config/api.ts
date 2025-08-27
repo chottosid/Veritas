@@ -37,6 +37,8 @@ export const API_CONFIG = {
     // Core functionality
     CITIZENS_COMPLAINTS: '/citizens/complaints',
     CITIZENS_CASES: '/citizens/cases',
+    CITIZENS_LAWYERS: '/citizens/lawyers',
+    CITIZENS_LAWYER_REQUESTS: '/citizens/lawyer-requests',
     POLICE_COMPLAINTS: '/police/complaints',
     POLICE_JUDGES: '/police/judges',
     POLICE_CASES: '/police/cases',

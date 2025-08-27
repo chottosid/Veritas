@@ -145,6 +145,16 @@ export const Header = () => {
                   Cases
                 </Link>
               )}
+              {user.role === 'CITIZEN' && (
+                <Link to="/find-lawyer" className="text-foreground hover:text-primary transition-colors">
+                  Find Lawyers
+                </Link>
+              )}
+              {user.role === 'CITIZEN' && (
+                <Link to="/lawyer-requests" className="text-foreground hover:text-primary transition-colors">
+                  Lawyer Requests
+                </Link>
+              )}
               {user.role === 'POLICE' && (
                 <Link to="/police/cases" className="text-foreground hover:text-primary transition-colors">
                   Cases
@@ -374,6 +384,24 @@ export const Header = () => {
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Cases
+                  </Link>
+                )}
+                {user.role === 'CITIZEN' && (
+                  <Link 
+                    to="/find-lawyer" 
+                    className="block px-4 py-2 text-foreground hover:bg-muted rounded-md transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Find Lawyers
+                  </Link>
+                )}
+                {user.role === 'CITIZEN' && (
+                  <Link 
+                    to="/lawyer-requests" 
+                    className="block px-4 py-2 text-foreground hover:bg-muted rounded-md transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Lawyer Requests
                   </Link>
                 )}
                 {user.role === 'POLICE' && (

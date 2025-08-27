@@ -7,7 +7,36 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Layout } from "@/components/layout/Layout";
 import { api } from "@/lib/api";
-import { Search, Users, Building, Star, Phone, Mail, MapPin } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { 
+  Search, 
+  Users, 
+  Building, 
+  Star, 
+  Phone, 
+  Mail, 
+  MapPin, 
+  Scale,
+  Send,
+  FileText
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Lawyer {
   _id: string;
@@ -22,15 +51,56 @@ interface Lawyer {
   rating?: number;
 }
 
+interface Case {
+  _id: string;
+  caseNumber: string;
+  status: string;
+  firId: {
+    firNumber: string;
+    sections?: string[];
+  };
+  assignedJudgeId?: {
+    name: string;
+    courtName: string;
+  };
+  accusedLawyerId?: {
+    name: string;
+    firmName: string;
+  };
+  prosecutorLawyerId?: {
+    name: string;
+    firmName: string;
+  };
+}
+
+interface LawyerRequestForm {
+  lawyerId: string;
+  caseId: string;
+  message: string;
+}
+
 export const FindLawyer = () => {
   const [lawyers, setLawyers] = useState<Lawyer[]>([]);
+  const [cases, setCases] = useState<Case[]>([]);
   const [filteredLawyers, setFilteredLawyers] = useState<Lawyer[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  const [casesLoading, setCasesLoading] = useState(false);
+  const [requestLoading, setRequestLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Request lawyer form state
+  const [selectedLawyer, setSelectedLawyer] = useState<Lawyer | null>(null);
+  const [requestForm, setRequestForm] = useState<LawyerRequestForm>({
+    lawyerId: '',
+    caseId: '',
+    message: ''
+  });
+  const [showRequestDialog, setShowRequestDialog] = useState(false);
 
   useEffect(() => {
     fetchLawyers();
+    fetchCases();
   }, []);
 
   useEffect(() => {
@@ -65,6 +135,76 @@ export const FindLawyer = () => {
       setError(err.response?.data?.message || 'Failed to fetch lawyers');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCases = async () => {
+    try {
+      setCasesLoading(true);
+      const response = await api.get('/citizens/cases');
+      
+      if (response.data.success) {
+        // Only show cases that don't have a lawyer assigned yet
+        const availableCases = response.data.data.filter((caseItem: Case) => 
+          !caseItem.accusedLawyerId && caseItem.status !== 'CLOSED'
+        );
+        setCases(availableCases);
+      }
+    } catch (err: any) {
+      console.error('Error fetching cases:', err);
+      // Don't show error for cases - it's optional functionality
+    } finally {
+      setCasesLoading(false);
+    }
+  };
+
+  const handleRequestLawyer = (lawyer: Lawyer) => {
+    setSelectedLawyer(lawyer);
+    setRequestForm({
+      lawyerId: lawyer._id,
+      caseId: '',
+      message: `Dear ${lawyer.name},\n\nI would like to request your legal representation for my case. Please review the case details and let me know if you can assist me.\n\nThank you for your consideration.`
+    });
+    setShowRequestDialog(true);
+  };
+
+  const submitLawyerRequest = async () => {
+    if (!requestForm.caseId || !requestForm.message.trim()) {
+      toast({
+        title: "Error",
+        description: "Please select a case and provide a message",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setRequestLoading(true);
+      
+      const response = await api.post(`/citizens/cases/${requestForm.caseId}/request-lawyer`, {
+        lawyerId: requestForm.lawyerId,
+        message: requestForm.message
+      });
+
+      if (response.data.success) {
+        toast({
+          title: "Request Sent Successfully",
+          description: `Your request has been sent to ${selectedLawyer?.name}. You will be notified when they respond.`,
+        });
+        setShowRequestDialog(false);
+        setRequestForm({ lawyerId: '', caseId: '', message: '' });
+      } else {
+        throw new Error(response.data.message || 'Failed to send request');
+      }
+    } catch (err: any) {
+      console.error('Error sending lawyer request:', err);
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || 'Failed to send lawyer request',
+        variant: "destructive"
+      });
+    } finally {
+      setRequestLoading(false);
     }
   };
 
@@ -289,20 +429,21 @@ export const FindLawyer = () => {
                   <div className="flex gap-2">
                     <Button 
                       onClick={() => handleContactLawyer(lawyer)}
+                      variant="outline"
                       className="flex-1"
                       size="sm"
                     >
+                      <Phone className="h-3 w-3 mr-1" />
                       Contact
                     </Button>
                     <Button 
-                      variant="outline" 
+                      onClick={() => handleRequestLawyer(lawyer)}
+                      className="flex-1"
                       size="sm"
-                      onClick={() => {
-                        // TODO: Implement view profile functionality
-                        alert('Profile view coming soon!');
-                      }}
+                      disabled={cases.length === 0}
                     >
-                      View Profile
+                      <Send className="h-3 w-3 mr-1" />
+                      Request
                     </Button>
                   </div>
                 </CardContent>
@@ -310,6 +451,95 @@ export const FindLawyer = () => {
             ))}
           </div>
         )}
+
+        {/* Request Lawyer Dialog */}
+        <Dialog open={showRequestDialog} onOpenChange={setShowRequestDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Request Legal Representation</DialogTitle>
+              <DialogDescription>
+                Send a request to {selectedLawyer?.name} from {selectedLawyer?.firmName} for legal representation.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              {/* Case Selection */}
+              <div className="space-y-2">
+                <Label htmlFor="case">Select Case</Label>
+                {casesLoading ? (
+                  <Skeleton className="h-10 w-full" />
+                ) : cases.length === 0 ? (
+                  <Alert>
+                    <AlertDescription>
+                      You don't have any cases available for lawyer requests. Cases must be created from FIRs to request legal representation.
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <Select 
+                    value={requestForm.caseId} 
+                    onValueChange={(value) => setRequestForm(prev => ({ ...prev, caseId: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a case" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cases.map((caseItem) => (
+                        <SelectItem key={caseItem._id} value={caseItem._id}>
+                          <div className="flex items-center gap-2">
+                            <Scale className="h-3 w-3" />
+                            <span>{caseItem.caseNumber}</span>
+                            <span className="text-xs text-muted-foreground">
+                              (FIR: {caseItem.firId.firNumber})
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              {/* Message */}
+              <div className="space-y-2">
+                <Label htmlFor="message">Message</Label>
+                <Textarea
+                  id="message"
+                  placeholder="Explain why you need legal representation..."
+                  value={requestForm.message}
+                  onChange={(e) => setRequestForm(prev => ({ ...prev, message: e.target.value }))}
+                  rows={4}
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowRequestDialog(false)}
+                  disabled={requestLoading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={submitLawyerRequest}
+                  disabled={requestLoading || !requestForm.caseId || !requestForm.message.trim()}
+                >
+                  {requestLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="h-3 w-3 mr-2" />
+                      Send Request
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
