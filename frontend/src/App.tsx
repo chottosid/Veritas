@@ -28,6 +28,9 @@ import { OCOfficers } from "./pages/OCOfficers";
 import { JudgeDashboard } from "./pages/JudgeDashboard";
 import { JudgeFIRs } from "./pages/JudgeFIRs";
 import { JudgeCases } from "./pages/JudgeCases";
+import LawyerDashboard from "./pages/LawyerDashboard";
+import LawyerRequests from "./pages/LawyerRequests";
+import LawyerCases from "./pages/LawyerCases";
 
 const queryClient = new QueryClient();
 
@@ -204,6 +207,32 @@ const App = () => (
             element={
               <ProtectedRoute requiredRole="JUDGE">
                 <JudgeCases />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* Lawyer Routes */}
+          <Route 
+            path="/lawyer/dashboard" 
+            element={
+              <ProtectedRoute requiredRole="LAWYER">
+                <LawyerDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/lawyer/requests" 
+            element={
+              <ProtectedRoute requiredRole="LAWYER">
+                <LawyerRequests />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/lawyer/cases" 
+            element={
+              <ProtectedRoute requiredRole="LAWYER">
+                <LawyerCases />
               </ProtectedRoute>
             } 
           />

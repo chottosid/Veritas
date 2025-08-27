@@ -70,6 +70,11 @@ export const Dashboard = () => {
     return <Navigate to="/judge/dashboard" replace />;
   }
   
+  // Redirect lawyer users to their specific dashboard
+  if (user?.role === 'LAWYER') {
+    return <Navigate to="/lawyer/dashboard" replace />;
+  }
+  
   const [stats, setStats] = useState<DashboardStats>({
     complaints: 0,
     cases: 0,

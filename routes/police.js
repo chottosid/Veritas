@@ -547,6 +547,62 @@ router.get("/oc/officers", authenticateToken, async (req, res) => {
   }
 });
 
+// Get cases from OC's jurisdiction (OC only)
+router.get("/oc/cases", authenticateToken, async (req, res) => {
+  try {
+    const ocId = req.user.id;
+
+    // Verify the user is an OC
+    const oc = await Police.findById(ocId);
+    if (!oc || !oc.isOC) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Only OCs can view jurisdiction cases.",
+      });
+    }
+
+    // Get all cases where the investigating officers are from OC's station
+    // This includes cases that originated from complaints assigned by this OC
+    const stationOfficers = await Police.find({
+      station: oc.station,
+      isOC: false,
+    }).select("_id");
+
+    const officerIds = stationOfficers.map(officer => officer._id);
+
+    const cases = await Case.find({
+      investigatingOfficerIds: { $in: officerIds }
+    })
+      .populate({
+        path: "firId",
+        populate: {
+          path: "complaintId",
+          populate: {
+            path: "complainantId",
+            select: "name nid phone"
+          }
+        }
+      })
+      .populate("assignedJudgeId", "name courtName")
+      .populate("accusedLawyerId", "name firmName")
+      .populate("prosecutorLawyerId", "name firmName")
+      .populate("investigatingOfficerIds", "name rank station")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      data: cases,
+    });
+  } catch (error) {
+    console.error("Get OC cases error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get jurisdiction cases",
+      error: error.message,
+    });
+  }
+});
+
 // =============== INVESTIGATION MANAGEMENT ===============
 
 // Submit additional evidence for complaint

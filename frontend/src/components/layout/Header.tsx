@@ -125,7 +125,7 @@ export const Header = () => {
           {user ? (
             <>
               <Link 
-                to={user.role === 'POLICE' ? "/police/dashboard" : user.role === 'JUDGE' ? "/judge/dashboard" : "/dashboard"} 
+                to={user.role === 'POLICE' ? "/police/dashboard" : user.role === 'JUDGE' ? "/judge/dashboard" : user.role === 'LAWYER' ? "/lawyer/dashboard" : "/dashboard"} 
                 className="text-foreground hover:text-primary transition-colors"
               >
                 Dashboard
@@ -176,7 +176,12 @@ export const Header = () => {
                 </Link>
               )}
               {user.role === 'LAWYER' && (
-                <Link to="/cases" className="text-foreground hover:text-primary transition-colors">
+                <Link to="/lawyer/requests" className="text-foreground hover:text-primary transition-colors">
+                  Requests
+                </Link>
+              )}
+              {user.role === 'LAWYER' && (
+                <Link to="/lawyer/cases" className="text-foreground hover:text-primary transition-colors">
                   Cases
                 </Link>
               )}
@@ -338,7 +343,7 @@ export const Header = () => {
             {user ? (
               <>
                 <Link 
-                  to={user.role === 'POLICE' ? "/police/dashboard" : user.role === 'JUDGE' ? "/judge/dashboard" : "/dashboard"}
+                  to={user.role === 'POLICE' ? "/police/dashboard" : user.role === 'JUDGE' ? "/judge/dashboard" : user.role === 'LAWYER' ? "/lawyer/dashboard" : "/dashboard"}
                   className="block px-4 py-2 text-foreground hover:bg-muted rounded-md transition-colors"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
@@ -427,7 +432,16 @@ export const Header = () => {
                 )}
                 {user.role === 'LAWYER' && (
                   <Link 
-                    to="/cases" 
+                    to="/lawyer/requests" 
+                    className="block px-4 py-2 text-foreground hover:bg-muted rounded-md transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Requests
+                  </Link>
+                )}
+                {user.role === 'LAWYER' && (
+                  <Link 
+                    to="/lawyer/cases" 
                     className="block px-4 py-2 text-foreground hover:bg-muted rounded-md transition-colors"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >

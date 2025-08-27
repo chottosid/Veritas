@@ -45,6 +45,10 @@ export const API_CONFIG = {
     JUDGES_FIRS: '/judges/firs',
     JUDGES_CASES: '/judges/cases',
     
+    // Lawyer specific endpoints
+    LAWYERS_REQUESTS: '/lawyers/requests',
+    LAWYERS_CASES: '/lawyers/cases',
+    
     // Notifications
     CITIZENS_NOTIFICATIONS: '/citizens/notifications',
     POLICE_NOTIFICATIONS: '/police/notifications',
