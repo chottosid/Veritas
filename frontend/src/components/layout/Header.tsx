@@ -13,7 +13,6 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/authStore';
 import { api } from '@/lib/api';
-import logo from '@/assets/logo.png';
 
 interface NotificationSummary {
   totalUnread: number;
@@ -118,7 +117,7 @@ export const Header = () => {
       <div className="container flex h-16 items-center justify-between px-4">
         {/* Logo */}
         <Link to="/" className="flex items-center space-x-2">
-          <img src={logo} alt="Justice Nexus Chain" className="h-8" />
+          <img src="/stop.png" alt="OneStop Justice" className="h-8" />
         </Link>
 
         {/* Desktop Navigation */}
