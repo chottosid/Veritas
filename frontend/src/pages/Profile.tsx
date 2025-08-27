@@ -51,7 +51,30 @@ interface PoliceProfile {
   createdAt: string;
 }
 
-type UserProfile = CitizenProfile | PoliceProfile;
+interface JudgeProfile {
+  _id: string;
+  name: string;
+  address: string;
+  jid: string;
+  courtName: string;
+  rank: string;
+  phone?: string;
+  email?: string;
+  createdAt: string;
+}
+
+interface LawyerProfile {
+  _id: string;
+  name: string;
+  address: string;
+  bid: string;
+  firmName: string;
+  phone?: string;
+  email?: string;
+  createdAt: string;
+}
+
+type UserProfile = CitizenProfile | PoliceProfile | JudgeProfile | LawyerProfile;
 
 export const Profile = () => {
   const { user } = useAuthStore();
@@ -93,6 +116,14 @@ export const Profile = () => {
 
   const isCitizenProfile = (profile: UserProfile): profile is CitizenProfile => {
     return 'nid' in profile;
+  };
+
+  const isJudgeProfile = (profile: UserProfile): profile is JudgeProfile => {
+    return 'jid' in profile;
+  };
+
+  const isLawyerProfile = (profile: UserProfile): profile is LawyerProfile => {
+    return 'bid' in profile;
   };
 
   const getRoleDisplayName = () => {
@@ -438,7 +469,10 @@ export const Profile = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <CreditCard className="h-5 w-5" />
-                    {isPoliceProfile(profile) ? 'Service Information' : 'Government Information'}
+                    {isPoliceProfile(profile) ? 'Service Information' : 
+                     isJudgeProfile(profile) ? 'Court Information' :
+                     isLawyerProfile(profile) ? 'Professional Information' :
+                     'Government Information'}
                   </CardTitle>
                   <CardDescription>
                     Official identification details (read-only)
@@ -512,6 +546,60 @@ export const Profile = () => {
                           </div>
                         </>
                       )}
+                    </>
+                  )}
+
+                  {isJudgeProfile(profile) && (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <CreditCard className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Judge ID (JID)</p>
+                          <p className="font-medium text-lg">{profile.jid}</p>
+                        </div>
+                      </div>
+                      
+                      <Separator />
+                      
+                      <div className="flex items-center gap-3">
+                        <User className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Rank</p>
+                          <p className="font-medium text-lg">{profile.rank}</p>
+                        </div>
+                      </div>
+                      
+                      <Separator />
+                      
+                      <div className="flex items-center gap-3">
+                        <MapPin className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Court Name</p>
+                          <p className="font-medium text-lg">{profile.courtName}</p>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {isLawyerProfile(profile) && (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <CreditCard className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Bar ID (BID)</p>
+                          <p className="font-medium text-lg">{profile.bid}</p>
+                        </div>
+                      </div>
+                      
+                      <Separator />
+                      
+                      <div className="flex items-center gap-3">
+                        <MapPin className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Law Firm</p>
+                          <p className="font-medium text-lg">{profile.firmName}</p>
+                        </div>
+                      </div>
                     </>
                   )}
                 </CardContent>

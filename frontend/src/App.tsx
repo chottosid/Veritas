@@ -25,6 +25,9 @@ import { PoliceCaseDetail } from "./pages/PoliceCaseDetail";
 import { PoliceJudges } from "./pages/PoliceJudges";
 import { OCComplaints } from "./pages/OCComplaints";
 import { OCOfficers } from "./pages/OCOfficers";
+import { JudgeDashboard } from "./pages/JudgeDashboard";
+import { JudgeFIRs } from "./pages/JudgeFIRs";
+import { JudgeCases } from "./pages/JudgeCases";
 
 const queryClient = new QueryClient();
 
@@ -175,6 +178,32 @@ const App = () => (
             element={
               <ProtectedRoute requiredRole="POLICE">
                 <OCOfficers />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* Judge Routes */}
+          <Route 
+            path="/judge/dashboard" 
+            element={
+              <ProtectedRoute requiredRole="JUDGE">
+                <JudgeDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/judge/firs" 
+            element={
+              <ProtectedRoute requiredRole="JUDGE">
+                <JudgeFIRs />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/judge/cases" 
+            element={
+              <ProtectedRoute requiredRole="JUDGE">
+                <JudgeCases />
               </ProtectedRoute>
             } 
           />

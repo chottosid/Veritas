@@ -65,6 +65,11 @@ export const Dashboard = () => {
     return <Navigate to="/police/dashboard" replace />;
   }
   
+  // Redirect judge users to their specific dashboard
+  if (user?.role === 'JUDGE') {
+    return <Navigate to="/judge/dashboard" replace />;
+  }
+  
   const [stats, setStats] = useState<DashboardStats>({
     complaints: 0,
     cases: 0,
