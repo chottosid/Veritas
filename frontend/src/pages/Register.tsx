@@ -12,6 +12,7 @@ import { Layout } from '@/components/layout/Layout';
 import { useAuthStore, UserRole } from '@/store/authStore';
 import { useToast } from '@/hooks/use-toast';
 import api from '@/lib/api';
+import { API_CONFIG } from '@/config/api';
 
 const roleConfig = {
   CITIZEN: {
@@ -123,10 +124,10 @@ export const Register = () => {
         registrationData.firmName = formData.firmName;
       }
 
-      const endpoint = role === 'CITIZEN' ? '/citizens/register' :
-                      role === 'POLICE' ? '/police/register' :
-                      role === 'JUDGE' ? '/judges/register' :
-                      '/lawyers/register';
+      const endpoint = role === 'CITIZEN' ? API_CONFIG.ENDPOINTS.CITIZENS_REGISTER :
+                      role === 'POLICE' ? API_CONFIG.ENDPOINTS.POLICE_REGISTER :
+                      role === 'JUDGE' ? API_CONFIG.ENDPOINTS.JUDGES_REGISTER :
+                      API_CONFIG.ENDPOINTS.LAWYERS_REGISTER;
 
       const response = await api.post(endpoint, registrationData);
       

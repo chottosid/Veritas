@@ -1,11 +1,12 @@
 // API Testing and Debug Utilities
 import api, { getAuthToken, isAuthenticated } from './api';
+import { API_CONFIG } from '@/config/api';
 
 export const debugAPI = {
   // Test if the API is accessible
   testConnection: async () => {
     try {
-      const response = await fetch('http://localhost:3001/health');
+      const response = await fetch(API_CONFIG.HEALTH_URL);
       const data = await response.json();
       console.log('API Health Check:', data);
       return data;

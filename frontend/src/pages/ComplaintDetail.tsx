@@ -28,6 +28,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Layout } from '@/components/layout/Layout';
 import { useToast } from '@/hooks/use-toast';
 import api from '@/lib/api';
+import { getIPFSUrl } from '@/config/api';
 
 interface Attachment {
   fileName: string;
@@ -167,8 +168,8 @@ export const ComplaintDetail = () => {
   };
 
   const handleDownloadAttachment = (attachment: Attachment) => {
-    // Create IPFS gateway URL - you may need to adjust this based on your IPFS setup
-    const ipfsGatewayUrl = `https://ipfs.io/ipfs/${attachment.ipfsHash}`;
+    // Use centralized IPFS gateway configuration
+    const ipfsGatewayUrl = getIPFSUrl(attachment.ipfsHash);
     window.open(ipfsGatewayUrl, '_blank');
   };
 

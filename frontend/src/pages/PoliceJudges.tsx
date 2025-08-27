@@ -5,22 +5,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Search, User, Phone, Mail, MapPin } from "lucide-react";
+import { Search, User, Mail, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/authStore";
+import api from "@/lib/api";
 
 interface Judge {
-  id: string;
+  _id: string;
   name: string;
-  email: string;
-  jid: string;
   courtName: string;
-  rank: string;
-  phone?: string;
-  address?: string;
-  specialization?: string;
-  experience?: number;
-  status: 'ACTIVE' | 'INACTIVE' | 'ON_LEAVE';
+  jid: string;
 }
 
 export function PoliceJudges() {
@@ -36,16 +30,10 @@ export function PoliceJudges() {
   const fetchJudges = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`http://localhost:3000/api/police/judges`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await api.get('/police/judges');
       
-      if (response.ok) {
-        const data = await response.json();
-        setJudges(data.judges || []);
+      if (response.data.success) {
+        setJudges(response.data.data || []);
       } else {
         throw new Error('Failed to fetch judges');
       }
@@ -62,19 +50,6 @@ export function PoliceJudges() {
     judge.courtName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     judge.jid.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'ACTIVE':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      case 'INACTIVE':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-      case 'ON_LEAVE':
-        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
-    }
-  };
 
   if (loading) {
     return (
@@ -143,7 +118,7 @@ export function PoliceJudges() {
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {filteredJudges.map((judge) => (
-              <Card key={judge.id} className="hover:shadow-lg transition-shadow">
+              <Card key={judge._id} className="hover:shadow-lg transition-shadow">
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
@@ -154,8 +129,8 @@ export function PoliceJudges() {
                         </Badge>
                       </CardDescription>
                     </div>
-                    <Badge className={getStatusColor(judge.status)}>
-                      {judge.status.replace('_', ' ')}
+                    <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+                      ACTIVE
                     </Badge>
                   </div>
                 </CardHeader>
@@ -165,42 +140,6 @@ export function PoliceJudges() {
                       <MapPin className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">{judge.courtName}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <Badge variant="secondary" className="text-xs">
-                        {judge.rank}
-                      </Badge>
-                      {judge.experience && (
-                        <span className="text-muted-foreground">
-                          {judge.experience} years exp.
-                        </span>
-                      )}
-                    </div>
-                    {judge.specialization && (
-                      <p className="text-sm text-muted-foreground">
-                        <strong>Specialization:</strong> {judge.specialization}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2 pt-2 border-t">
-                    {judge.email && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Mail className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">{judge.email}</span>
-                      </div>
-                    )}
-                    {judge.phone && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">{judge.phone}</span>
-                      </div>
-                    )}
-                    {judge.address && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">{judge.address}</span>
-                      </div>
-                    )}
                   </div>
 
                   <div className="flex gap-2 pt-2">
@@ -209,11 +148,7 @@ export function PoliceJudges() {
                       size="sm"
                       className="flex-1"
                       onClick={() => {
-                        if (judge.email) {
-                          window.location.href = `mailto:${judge.email}`;
-                        } else {
-                          toast.error("Email not available");
-                        }
+                        toast.info("Contact information not available in current system");
                       }}
                     >
                       <Mail className="h-4 w-4 mr-1" />
@@ -223,7 +158,6 @@ export function PoliceJudges() {
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        // Could implement viewing judge's cases or more details
                         toast.info("Judge profile feature coming soon");
                       }}
                     >

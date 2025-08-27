@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Layout } from "@/components/layout/Layout";
 import { useAuthStore } from "@/store/authStore";
 import { api } from "@/lib/api";
+import { API_CONFIG } from "@/config/api";
 import { 
   User, 
   Mail, 
@@ -76,13 +77,13 @@ export const Profile = () => {
   const getProfileEndpoint = () => {
     switch (user?.role) {
       case 'POLICE':
-        return '/police/profile';
+        return API_CONFIG.ENDPOINTS.POLICE_PROFILE;
       case 'JUDGE':
-        return '/judges/profile';
+        return API_CONFIG.ENDPOINTS.JUDGES_PROFILE;
       case 'LAWYER':
-        return '/lawyers/profile';
+        return API_CONFIG.ENDPOINTS.LAWYERS_PROFILE;
       default:
-        return '/citizens/profile';
+        return API_CONFIG.ENDPOINTS.CITIZENS_PROFILE;
     }
   };
 

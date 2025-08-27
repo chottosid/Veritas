@@ -11,6 +11,7 @@ import { Layout } from '@/components/layout/Layout';
 import { useAuthStore, UserRole } from '@/store/authStore';
 import { useToast } from '@/hooks/use-toast';
 import api from '@/lib/api';
+import { API_CONFIG } from '@/config/api';
 
 const roleConfig = {
   CITIZEN: {
@@ -71,10 +72,10 @@ export const Login = () => {
         password
       };
 
-      const endpoint = role === 'CITIZEN' ? '/citizens/login' :
-                      role === 'POLICE' ? '/police/login' :
-                      role === 'JUDGE' ? '/judges/login' :
-                      '/lawyers/login';
+      const endpoint = role === 'CITIZEN' ? API_CONFIG.ENDPOINTS.CITIZENS_LOGIN :
+                      role === 'POLICE' ? API_CONFIG.ENDPOINTS.POLICE_LOGIN :
+                      role === 'JUDGE' ? API_CONFIG.ENDPOINTS.JUDGES_LOGIN :
+                      API_CONFIG.ENDPOINTS.LAWYERS_LOGIN;
 
       const response = await api.post(endpoint, loginData);
       
