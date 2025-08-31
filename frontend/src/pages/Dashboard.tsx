@@ -114,7 +114,7 @@ export const Dashboard = () => {
       try {
         const endpoints = {
           CITIZEN: ['/citizens/complaints', '/citizens/cases', '/citizens/notifications?limit=5'],
-          POLICE: ['/police/complaints', '/police/cases', '/police/notifications?limit=5'],
+          POLICE: [user?.isOC ? '/police/oc/complaints' : '/police/complaints', '/police/cases', '/police/notifications?limit=5'],
           JUDGE: ['/judges/firs', '/judges/cases', '/judges/notifications?limit=5'],
           LAWYER: ['/lawyers/requests', '/lawyers/cases', '/lawyers/notifications?limit=5']
         };
@@ -195,15 +195,15 @@ export const Dashboard = () => {
         ];
       case 'POLICE':
         return [
-          {
-            title: 'Assigned Complaints',
-            value: stats.complaints,
-            description: 'Under investigation',
-            icon: FileText,
-            color: 'text-blue-600',
-            bgColor: 'bg-blue-100',
-            link: '/police/complaints'
-          },
+                      {
+              title: user?.isOC ? 'Pending Complaints' : 'Assigned Complaints',
+              value: stats.complaints,
+              description: user?.isOC ? 'Awaiting assignment' : 'Under investigation',
+              icon: FileText,
+              color: 'text-blue-600',
+              bgColor: 'bg-blue-100',
+              link: user?.isOC ? '/police/oc/complaints' : '/police/complaints'
+            },
           {
             title: 'Active Cases',
             value: stats.cases,
@@ -274,9 +274,9 @@ export const Dashboard = () => {
         ];
       case 'POLICE':
         return [
-          { title: 'View Complaints', description: 'Review assigned cases', link: '/police/complaints', icon: FileText, variant: 'primary' },
+          { title: user?.isOC ? 'Review Pending Complaints' : 'View Complaints', description: user?.isOC ? 'Assign officers to cases' : 'Review assigned cases', link: user?.isOC ? '/police/oc/complaints' : '/police/complaints', icon: FileText, variant: 'primary' },
           { title: 'Submit Evidence', description: 'Upload case evidence', link: '/police/cases', icon: Plus, variant: 'secondary' },
-          { title: 'File FIR', description: 'Register FIR', link: '/police/complaints', icon: Scale, variant: 'secondary' }
+          { title: 'View Cases', description: 'Monitor active investigations', link: '/police/cases', icon: Scale, variant: 'secondary' }
         ];
       case 'JUDGE':
         return [

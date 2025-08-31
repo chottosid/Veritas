@@ -52,6 +52,23 @@ interface Complainant {
   email?: string;
 }
 
+interface AccusedPerson {
+  _id?: string;
+  name: string;
+  address: string;
+  phone?: string;
+  email?: string;
+  nid?: string;
+  age?: number;
+  gender?: 'MALE' | 'FEMALE' | 'OTHER';
+  occupation?: string;
+  relationshipToComplainant?: string;
+  addedBy: 'CITIZEN' | 'POLICE';
+  addedById: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 interface ComplaintDetail {
   _id: string;
   title: string;
@@ -60,6 +77,7 @@ interface ComplaintDetail {
   status: 'PENDING' | 'UNDER_INVESTIGATION' | 'FIR_REGISTERED' | 'CASE_FILED' | 'CLOSED';
   complainantId: Complainant;
   assignedOfficerIds: AssignedOfficer[];
+  accused: AccusedPerson[];
   attachments: Attachment[];
   createdAt: string;
   updatedAt: string;
@@ -171,6 +189,30 @@ export const ComplaintDetail = () => {
     // Use centralized IPFS gateway configuration
     const ipfsGatewayUrl = getIPFSUrl(attachment.ipfsHash);
     window.open(ipfsGatewayUrl, '_blank');
+  };
+
+  const getGenderLabel = (gender: string) => {
+    switch (gender) {
+      case 'MALE':
+        return 'Male';
+      case 'FEMALE':
+        return 'Female';
+      case 'OTHER':
+        return 'Other';
+      default:
+        return 'Not specified';
+    }
+  };
+
+  const getAddedByLabel = (addedBy: string) => {
+    switch (addedBy) {
+      case 'CITIZEN':
+        return 'Added by Complainant';
+      case 'POLICE':
+        return 'Added by Police';
+      default:
+        return 'Unknown';
+    }
   };
 
   if (loading) {
@@ -418,6 +460,53 @@ export const ComplaintDetail = () => {
                         <span>{officer.station}</span>
                       </div>
                       {complaint.assignedOfficerIds.length > 1 && (
+                        <Separator className="my-3" />
+                      )}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Accused Persons */}
+            {complaint.accused.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <User className="h-5 w-5" />
+                    Accused Persons
+                  </CardTitle>
+                  <CardDescription>
+                    Persons accused in this complaint
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {complaint.accused.map((person, index) => (
+                    <div key={index} className="space-y-2">
+                      <p className="font-medium text-gray-900">
+                        {person.name}
+                      </p>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <BadgeIcon className="h-4 w-4" />
+                        <span>NID: {person.nid || 'N/A'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <MapPin className="h-4 w-4" />
+                        <span>{person.address}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Phone className="h-4 w-4" />
+                        <span>{person.phone || 'N/A'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Mail className="h-4 w-4" />
+                        <span>{person.email || 'N/A'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <BadgeIcon className="h-4 w-4" />
+                        <span>{getAddedByLabel(person.addedBy)}</span>
+                      </div>
+                      {complaint.accused.length > 1 && (
                         <Separator className="my-3" />
                       )}
                     </div>

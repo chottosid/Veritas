@@ -9,7 +9,10 @@ import {
   MapPin,
   FileCheck,
   Send,
-  Paperclip
+  Paperclip,
+  UserPlus,
+  Users,
+  Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +31,19 @@ interface AttachmentFile {
   name: string;
   size: number;
   type: string;
+}
+
+interface AccusedPerson {
+  id: string;
+  name: string;
+  address: string;
+  phone?: string;
+  email?: string;
+  nid?: string;
+  age?: number;
+  gender?: 'MALE' | 'FEMALE' | 'OTHER';
+  occupation?: string;
+  relationshipToComplainant?: string;
 }
 
 interface ComplaintFormData {
@@ -73,6 +89,7 @@ export const FileComplaint = () => {
   });
   
   const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
+  const [accused, setAccused] = useState<AccusedPerson[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Partial<ComplaintFormData>>({});
 
@@ -81,6 +98,54 @@ export const FileComplaint = () => {
     navigate('/login');
     return null;
   }
+
+  const addAccused = () => {
+    const newAccused: AccusedPerson = {
+      id: Date.now().toString(),
+      name: '',
+      address: '',
+      phone: '',
+      email: '',
+      nid: '',
+      age: undefined,
+      gender: undefined,
+      occupation: '',
+      relationshipToComplainant: ''
+    };
+    setAccused(prev => [...prev, newAccused]);
+  };
+
+  const removeAccused = (id: string) => {
+    setAccused(prev => prev.filter(acc => acc.id !== id));
+  };
+
+  const updateAccused = (id: string, field: keyof AccusedPerson, value: any) => {
+    setAccused(prev => prev.map(acc => 
+      acc.id === id ? { ...acc, [field]: value } : acc
+    ));
+  };
+
+  const validateAccused = (): boolean => {
+    for (const acc of accused) {
+      if (!acc.name.trim()) {
+        toast({
+          title: "Validation Error",
+          description: "All accused must have a name",
+          variant: "destructive",
+        });
+        return false;
+      }
+      if (!acc.address.trim()) {
+        toast({
+          title: "Validation Error",
+          description: "All accused must have an address",
+          variant: "destructive",
+        });
+        return false;
+      }
+    }
+    return true;
+  };
 
   const validateForm = (): boolean => {
     const newErrors: Partial<ComplaintFormData> = {};
@@ -191,6 +256,10 @@ export const FileComplaint = () => {
       return;
     }
 
+    if (!validateAccused()) {
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 
@@ -199,6 +268,11 @@ export const FileComplaint = () => {
       submitData.append('title', formData.title.trim());
       submitData.append('description', formData.description.trim());
       submitData.append('area', formData.area);
+
+      // Add accused information if any
+      if (accused.length > 0) {
+        submitData.append('accused', JSON.stringify(accused));
+      }
 
       // Add attachments
       attachments.forEach(attachment => {
@@ -209,6 +283,7 @@ export const FileComplaint = () => {
         title: formData.title,
         description: formData.description,
         area: formData.area,
+        accusedCount: accused.length,
         attachmentCount: attachments.length
       });
 
@@ -290,6 +365,7 @@ export const FileComplaint = () => {
               <li>Include relevant evidence files (photos, videos, documents)</li>
               <li>Maximum 5 files, each up to 10MB in size</li>
               <li>Supported formats: JPG, PNG, PDF, MP4, AVI</li>
+              <li>You can optionally add details of accused persons</li>
               <li>False complaints may result in legal consequences</li>
             </ul>
           </CardContent>
@@ -386,6 +462,146 @@ export const FileComplaint = () => {
                 <p className="text-xs text-slate-500">
                   {formData.description.length}/1000 characters
                 </p>
+              </div>
+
+              {/* Accused Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium text-slate-700">
+                    Accused Persons (Optional)
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addAccused}
+                    className="flex items-center gap-2"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    Add Accused
+                  </Button>
+                </div>
+                
+                <p className="text-sm text-slate-600">
+                  If you know the details of the accused persons, you can add them here. 
+                  This information will help with the investigation.
+                </p>
+
+                {accused.length > 0 && (
+                  <div className="space-y-4">
+                    {accused.map((acc, index) => (
+                      <Card key={acc.id} className="border border-slate-200">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-lg flex items-center gap-2">
+                              <Users className="h-5 w-5" />
+                              Accused Person {index + 1}
+                            </CardTitle>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeAccused(acc.id)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">Full Name *</Label>
+                              <Input
+                                placeholder="Enter full name"
+                                value={acc.name}
+                                onChange={(e) => updateAccused(acc.id, 'name', e.target.value)}
+                                required
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">Address *</Label>
+                              <Input
+                                placeholder="Enter address"
+                                value={acc.address}
+                                onChange={(e) => updateAccused(acc.id, 'address', e.target.value)}
+                                required
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">Phone Number</Label>
+                              <Input
+                                placeholder="Enter phone number"
+                                value={acc.phone || ''}
+                                onChange={(e) => updateAccused(acc.id, 'phone', e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">Email</Label>
+                              <Input
+                                type="email"
+                                placeholder="Enter email address"
+                                value={acc.email || ''}
+                                onChange={(e) => updateAccused(acc.id, 'email', e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">NID Number</Label>
+                              <Input
+                                placeholder="Enter NID number"
+                                value={acc.nid || ''}
+                                onChange={(e) => updateAccused(acc.id, 'nid', e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">Age</Label>
+                              <Input
+                                type="number"
+                                placeholder="Enter age"
+                                value={acc.age || ''}
+                                onChange={(e) => updateAccused(acc.id, 'age', e.target.value ? parseInt(e.target.value) : undefined)}
+                                min="1"
+                                max="120"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">Gender</Label>
+                              <Select 
+                                value={acc.gender || ''} 
+                                onValueChange={(value) => updateAccused(acc.id, 'gender', value)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select gender" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="MALE">Male</SelectItem>
+                                  <SelectItem value="FEMALE">Female</SelectItem>
+                                  <SelectItem value="OTHER">Other</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">Occupation</Label>
+                              <Input
+                                placeholder="Enter occupation"
+                                value={acc.occupation || ''}
+                                onChange={(e) => updateAccused(acc.id, 'occupation', e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">Relationship to You</Label>
+                              <Input
+                                placeholder="e.g., Neighbor, Colleague, Stranger"
+                                value={acc.relationshipToComplainant || ''}
+                                onChange={(e) => updateAccused(acc.id, 'relationshipToComplainant', e.target.value)}
+                              />
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* File Attachments */}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Layout } from '@/components/layout/Layout';
 import { useAuthStore } from '@/store/authStore';
 import { useToast } from '@/hooks/use-toast';
@@ -26,7 +28,11 @@ import {
   Eye,
   Gavel,
   Users,
-  MapPin
+  MapPin,
+  Plus,
+  Upload,
+  UserPlus,
+  Settings
 } from 'lucide-react';
 
 interface Case {
@@ -44,6 +50,19 @@ interface Case {
         phone: string;
       };
     };
+    accused: Array<{
+      name: string;
+      address: string;
+      phone?: string;
+      email?: string;
+      nid?: string;
+      age?: number;
+      gender?: string;
+      occupation?: string;
+      relationshipToComplainant?: string;
+      addedBy: 'CITIZEN' | 'POLICE' | 'JUDGE';
+      addedById: string;
+    }>;
   };
   assignedJudgeId: {
     name: string;
@@ -62,6 +81,32 @@ interface Case {
     rank: string;
     station: string;
   }>;
+  lawyerRequests?: Array<{
+    _id: string;
+    citizenId: {
+      name: string;
+      nid: string;
+      phone: string;
+    };
+    requestedLawyerId: {
+      name: string;
+      firmName: string;
+    };
+    status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+    message?: string;
+  }>;
+  allDocuments?: Array<{
+    fileName: string;
+    ipfsHash: string;
+    fileSize: number;
+    uploadedAt: string;
+    documentSource: 'COMPLAINT' | 'FIR' | 'CASE_PROCEEDING';
+    proceedingType: string;
+    proceedingDescription: string;
+    createdByRole: string;
+    createdAt: string;
+  }>;
+  documentCount?: number;
   hearingDates: string[];
   verdict?: string;
   createdAt: string;
@@ -70,6 +115,7 @@ interface Case {
 export const JudgeCases = () => {
   const { user } = useAuthStore();
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   const [cases, setCases] = useState<Case[]>([]);
   const [filteredCases, setFilteredCases] = useState<Case[]>([]);
@@ -81,6 +127,26 @@ export const JudgeCases = () => {
   const [isClosingCase, setIsClosingCase] = useState(false);
   const [hearingDate, setHearingDate] = useState('');
   const [verdict, setVerdict] = useState('');
+
+  // New state for accused person form
+  const [isAddingAccused, setIsAddingAccused] = useState(false);
+  const [accusedForm, setAccusedForm] = useState({
+    name: '',
+    address: '',
+    phone: '',
+    email: '',
+    nid: '',
+    age: '',
+    gender: '',
+    occupation: '',
+    relationshipToComplainant: ''
+  });
+
+  // New state for document upload
+  const [isUploadingDocuments, setIsUploadingDocuments] = useState(false);
+  const [documentType, setDocumentType] = useState('');
+  const [documentDescription, setDocumentDescription] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
 
   useEffect(() => {
     fetchCases();
@@ -195,6 +261,97 @@ export const JudgeCases = () => {
     }
   };
 
+  const handleAddAccused = async (caseId: string) => {
+    try {
+      setIsAddingAccused(true);
+      
+      const response = await api.post(`/judges/cases/${caseId}/accused`, accusedForm);
+      
+      if (response.data.success) {
+        toast({
+          title: 'Accused Added',
+          description: `Accused person "${accusedForm.name}" has been added to the case`,
+        });
+        
+        // Reset form
+        setAccusedForm({
+          name: '',
+          address: '',
+          phone: '',
+          email: '',
+          nid: '',
+          age: '',
+          gender: '',
+          occupation: '',
+          relationshipToComplainant: ''
+        });
+        setSelectedCase(null);
+      } else {
+        throw new Error(response.data.message || 'Failed to add accused person');
+      }
+    } catch (err: any) {
+      console.error('Error adding accused:', err);
+      toast({
+        title: 'Error',
+        description: err.response?.data?.message || 'Failed to add accused person',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsAddingAccused(false);
+    }
+  };
+
+  const handleUploadDocuments = async (caseId: string) => {
+    try {
+      setIsUploadingDocuments(true);
+      
+      if (!selectedFiles || selectedFiles.length === 0) {
+        toast({
+          title: 'Error',
+          description: 'Please select files to upload',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('documentType', documentType);
+      formData.append('description', documentDescription);
+      
+      for (let i = 0; i < selectedFiles.length; i++) {
+        formData.append('documents', selectedFiles[i]);
+      }
+      
+      const response = await api.post(`/judges/cases/${caseId}/documents`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      
+      if (response.data.success) {
+        toast({
+          title: 'Documents Uploaded',
+          description: `${response.data.data.fileCount} document(s) uploaded successfully`,
+        });
+        
+        // Reset form
+        setDocumentType('');
+        setDocumentDescription('');
+        setSelectedFiles(null);
+        setSelectedCase(null);
+      } else {
+        throw new Error(response.data.message || 'Failed to upload documents');
+      }
+    } catch (err: any) {
+      console.error('Error uploading documents:', err);
+      toast({
+        title: 'Error',
+        description: err.response?.data?.message || 'Failed to upload documents',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUploadingDocuments(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'PENDING':
@@ -224,6 +381,14 @@ export const JudgeCases = () => {
       day: 'numeric',
       year: 'numeric',
     });
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   };
 
   if (error && !isLoading) {
@@ -337,16 +502,30 @@ export const JudgeCases = () => {
                             <span>Next: {formatDateShort(case_.hearingDates[0])}</span>
                           </div>
                         )}
-                        {case_.investigatingOfficerIds.length > 0 && (
-                          <div className="flex items-center gap-2">
-                            <Users className="h-4 w-4 text-muted-foreground" />
-                            <span>{case_.investigatingOfficerIds[0].name}</span>
-                          </div>
-                        )}
+                                                 {case_.investigatingOfficerIds.length > 0 && (
+                           <div className="flex items-center gap-2">
+                             <Users className="h-4 w-4 text-muted-foreground" />
+                             <span>{case_.investigatingOfficerIds[0].name}</span>
+                           </div>
+                         )}
+                         {case_.documentCount !== undefined && (
+                           <div className="flex items-center gap-2">
+                             <FileText className="h-4 w-4 text-muted-foreground" />
+                             <span>{case_.documentCount} document{case_.documentCount !== 1 ? 's' : ''}</span>
+                           </div>
+                         )}
                       </div>
                     </div>
 
                     <div className="flex flex-col gap-2 ml-4">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => navigate(`/case/${case_._id}`)}
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Full Details
+                      </Button>
                       <Dialog>
                         <DialogTrigger asChild>
                           <Button 
@@ -354,8 +533,8 @@ export const JudgeCases = () => {
                             size="sm"
                             onClick={() => setSelectedCase(case_)}
                           >
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
+                            <Settings className="h-4 w-4 mr-2" />
+                            Quick Actions
                           </Button>
                         </DialogTrigger>
                         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -464,6 +643,109 @@ export const JudgeCases = () => {
                                   )}
                                 </div>
                                 
+                                {/* Accused Persons */}
+                                {selectedCase.firId.accused && selectedCase.firId.accused.length > 0 && (
+                                  <div>
+                                    <Label className="text-muted-foreground">Accused Persons</Label>
+                                    <div className="mt-2 space-y-3">
+                                      {selectedCase.firId.accused.map((accused, index) => (
+                                        <div key={index} className="p-3 border rounded-lg bg-muted/30">
+                                          <div className="flex items-start justify-between mb-2">
+                                            <div className="flex items-center gap-2">
+                                              <span className="font-medium">{accused.name}</span>
+                                              <Badge variant="outline" className="text-xs">
+                                                {accused.addedBy}
+                                              </Badge>
+                                            </div>
+                                          </div>
+                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                            <div>
+                                              <span className="text-muted-foreground">Address:</span>
+                                              <span className="ml-1">{accused.address}</span>
+                                            </div>
+                                            {accused.phone && (
+                                              <div>
+                                                <span className="text-muted-foreground">Phone:</span>
+                                                <span className="ml-1">{accused.phone}</span>
+                                              </div>
+                                            )}
+                                            {accused.nid && (
+                                              <div>
+                                                <span className="text-muted-foreground">NID:</span>
+                                                <span className="ml-1">{accused.nid}</span>
+                                              </div>
+                                            )}
+                                            {accused.age && (
+                                              <div>
+                                                <span className="text-muted-foreground">Age:</span>
+                                                <span className="ml-1">{accused.age}</span>
+                                              </div>
+                                            )}
+                                            {accused.gender && (
+                                              <div>
+                                                <span className="text-muted-foreground">Gender:</span>
+                                                <span className="ml-1">{accused.gender}</span>
+                                              </div>
+                                            )}
+                                            {accused.occupation && (
+                                              <div>
+                                                <span className="text-muted-foreground">Occupation:</span>
+                                                <span className="ml-1">{accused.occupation}</span>
+                                              </div>
+                                            )}
+                                            {accused.relationshipToComplainant && (
+                                              <div className="md:col-span-2">
+                                                <span className="text-muted-foreground">Relationship:</span>
+                                                <span className="ml-1">{accused.relationshipToComplainant}</span>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Lawyer Requests */}
+                                {selectedCase.lawyerRequests && selectedCase.lawyerRequests.length > 0 && (
+                                  <div>
+                                    <Label className="text-muted-foreground">Lawyer Requests</Label>
+                                    <div className="mt-2 space-y-3">
+                                      {selectedCase.lawyerRequests.map((request, index) => (
+                                        <div key={index} className="p-3 border rounded-lg bg-muted/30">
+                                          <div className="flex items-start justify-between mb-2">
+                                            <div className="flex items-center gap-2">
+                                              <span className="font-medium">{request.requestedLawyerId.name}</span>
+                                              <Badge 
+                                                variant={request.status === 'ACCEPTED' ? 'default' : request.status === 'REJECTED' ? 'destructive' : 'secondary'}
+                                                className="text-xs"
+                                              >
+                                                {request.status}
+                                              </Badge>
+                                            </div>
+                                          </div>
+                                          <div className="space-y-1 text-sm">
+                                            <div>
+                                              <span className="text-muted-foreground">Firm:</span>
+                                              <span className="ml-1">{request.requestedLawyerId.firmName}</span>
+                                            </div>
+                                            <div>
+                                              <span className="text-muted-foreground">Requested by:</span>
+                                              <span className="ml-1">{request.citizenId.name}</span>
+                                            </div>
+                                            {request.message && (
+                                              <div>
+                                                <span className="text-muted-foreground">Message:</span>
+                                                <span className="ml-1">{request.message}</span>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                
                                 {selectedCase.investigatingOfficerIds.length > 0 && (
                                   <div>
                                     <Label className="text-muted-foreground">Investigating Officers</Label>
@@ -478,11 +760,108 @@ export const JudgeCases = () => {
                                     </div>
                                   </div>
                                 )}
-                              </div>
+                                                             </div>
 
-                              <Separator />
+                               <Separator />
 
-                              {/* Hearing Dates */}
+                               {/* All Documents */}
+                               <div className="space-y-4">
+                                 <div className="flex items-center justify-between">
+                                   <h4 className="font-semibold flex items-center gap-2">
+                                     <FileText className="h-4 w-4" />
+                                     All Case Documents
+                                   </h4>
+                                   {selectedCase.allDocuments && selectedCase.allDocuments.length > 0 && (
+                                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                                       <span>Total: {selectedCase.allDocuments.length} document{selectedCase.allDocuments.length !== 1 ? 's' : ''}</span>
+                                       <span>•</span>
+                                       <span>Complaint: {selectedCase.allDocuments.filter(doc => doc.documentSource === 'COMPLAINT').length}</span>
+                                       <span>•</span>
+                                       <span>FIR: {selectedCase.allDocuments.filter(doc => doc.documentSource === 'FIR').length}</span>
+                                       <span>•</span>
+                                       <span>Case: {selectedCase.allDocuments.filter(doc => doc.documentSource === 'CASE_PROCEEDING').length}</span>
+                                     </div>
+                                   )}
+                                 </div>
+                                                                   {selectedCase.allDocuments && selectedCase.allDocuments.length > 0 ? (
+                                    <div className="space-y-3">
+                                      {/* Document Timeline Header */}
+                                      <div className="p-3 bg-muted/20 rounded-lg border-l-4 border-primary">
+                                        <div className="flex items-center gap-2 text-sm font-medium">
+                                          <FileText className="h-4 w-4" />
+                                          Document Timeline
+                                        </div>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          Documents accumulate throughout the case lifecycle: Complaint → FIR → Case Proceedings
+                                        </p>
+                                      </div>
+                                      
+                                      {selectedCase.allDocuments.map((document, index) => (
+                                       <div key={index} className="p-4 border rounded-lg bg-muted/30">
+                                         <div className="flex items-start justify-between mb-2">
+                                           <div className="flex items-center gap-2">
+                                             <FileText className="h-4 w-4 text-muted-foreground" />
+                                             <span className="font-medium">{document.fileName}</span>
+                                             <Badge variant="outline" className="text-xs">
+                                               {document.documentSource}
+                                             </Badge>
+                                             <Badge 
+                                               variant={document.createdByRole === 'JUDGE' ? 'default' : 
+                                                       document.createdByRole === 'POLICE' ? 'secondary' : 
+                                                       document.createdByRole === 'CITIZEN' ? 'outline' : 'secondary'}
+                                               className="text-xs"
+                                             >
+                                               {document.createdByRole}
+                                             </Badge>
+                                           </div>
+                                           <span className="text-xs text-muted-foreground">
+                                             {formatDate(document.createdAt)}
+                                           </span>
+                                         </div>
+                                         <div className="space-y-2 text-sm">
+                                                                                       <div>
+                                              <span className="text-muted-foreground">Type:</span>
+                                              <span className="ml-1 font-medium">{document.proceedingType.replace(/_/g, ' ')}</span>
+                                            </div>
+                                            <div>
+                                              <span className="text-muted-foreground">Description:</span>
+                                              <span className="ml-1">{document.proceedingDescription}</span>
+                                            </div>
+                                            <div>
+                                              <span className="text-muted-foreground">Stage:</span>
+                                              <span className="ml-1 font-medium">
+                                                {document.documentSource === 'COMPLAINT' ? 'Initial Filing' :
+                                                 document.documentSource === 'FIR' ? 'Police Investigation' :
+                                                 document.documentSource === 'CASE_PROCEEDING' ? 'Court Proceedings' : 'Unknown'}
+                                              </span>
+                                            </div>
+                                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                             <span>Size: {formatFileSize(document.fileSize)}</span>
+                                             <span>IPFS: {document.ipfsHash.substring(0, 10)}...</span>
+                                           </div>
+                                         </div>
+                                         <div className="mt-3 pt-2 border-t">
+                                           <Button 
+                                             variant="outline" 
+                                             size="sm"
+                                             onClick={() => window.open(`https://gateway.pinata.cloud/ipfs/${document.ipfsHash}`, '_blank')}
+                                             className="text-xs"
+                                           >
+                                             <FileText className="h-3 w-3 mr-1" />
+                                             View Document
+                                           </Button>
+                                         </div>
+                                       </div>
+                                     ))}
+                                   </div>
+                                 ) : (
+                                   <p className="text-sm text-muted-foreground">No documents attached to this case yet.</p>
+                                 )}
+                               </div>
+
+                               <Separator />
+
+                               {/* Hearing Dates */}
                               <div className="space-y-4">
                                 <h4 className="font-semibold flex items-center gap-2">
                                   <Calendar className="h-4 w-4" />
@@ -549,6 +928,168 @@ export const JudgeCases = () => {
                                       >
                                         <Calendar className="h-4 w-4" />
                                         {isSchedulingHearing ? 'Scheduling...' : 'Schedule'}
+                                      </Button>
+                                    </div>
+                                  </div>
+
+                                  {/* Add Accused Person */}
+                                  <div className="space-y-4">
+                                    <h4 className="font-semibold flex items-center gap-2">
+                                      <UserPlus className="h-4 w-4" />
+                                      Add Accused Person
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      <div>
+                                        <Label htmlFor="accusedName">Name *</Label>
+                                        <Input
+                                          id="accusedName"
+                                          value={accusedForm.name}
+                                          onChange={(e) => setAccusedForm(prev => ({ ...prev, name: e.target.value }))}
+                                          placeholder="Full name"
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="accusedAddress">Address *</Label>
+                                        <Input
+                                          id="accusedAddress"
+                                          value={accusedForm.address}
+                                          onChange={(e) => setAccusedForm(prev => ({ ...prev, address: e.target.value }))}
+                                          placeholder="Full address"
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="accusedPhone">Phone</Label>
+                                        <Input
+                                          id="accusedPhone"
+                                          value={accusedForm.phone}
+                                          onChange={(e) => setAccusedForm(prev => ({ ...prev, phone: e.target.value }))}
+                                          placeholder="Phone number"
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="accusedEmail">Email</Label>
+                                        <Input
+                                          id="accusedEmail"
+                                          type="email"
+                                          value={accusedForm.email}
+                                          onChange={(e) => setAccusedForm(prev => ({ ...prev, email: e.target.value }))}
+                                          placeholder="Email address"
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="accusedNID">NID</Label>
+                                        <Input
+                                          id="accusedNID"
+                                          value={accusedForm.nid}
+                                          onChange={(e) => setAccusedForm(prev => ({ ...prev, nid: e.target.value }))}
+                                          placeholder="National ID"
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="accusedAge">Age</Label>
+                                        <Input
+                                          id="accusedAge"
+                                          type="number"
+                                          value={accusedForm.age}
+                                          onChange={(e) => setAccusedForm(prev => ({ ...prev, age: e.target.value }))}
+                                          placeholder="Age"
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="accusedGender">Gender</Label>
+                                        <Select value={accusedForm.gender} onValueChange={(value) => setAccusedForm(prev => ({ ...prev, gender: value }))}>
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Select gender" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="MALE">Male</SelectItem>
+                                            <SelectItem value="FEMALE">Female</SelectItem>
+                                            <SelectItem value="OTHER">Other</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="accusedOccupation">Occupation</Label>
+                                        <Input
+                                          id="accusedOccupation"
+                                          value={accusedForm.occupation}
+                                          onChange={(e) => setAccusedForm(prev => ({ ...prev, occupation: e.target.value }))}
+                                          placeholder="Occupation"
+                                        />
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <Label htmlFor="accusedRelationship">Relationship to Complainant</Label>
+                                      <Input
+                                        id="accusedRelationship"
+                                        value={accusedForm.relationshipToComplainant}
+                                        onChange={(e) => setAccusedForm(prev => ({ ...prev, relationshipToComplainant: e.target.value }))}
+                                        placeholder="e.g., neighbor, colleague, relative"
+                                      />
+                                    </div>
+                                    <Button 
+                                      onClick={() => handleAddAccused(selectedCase._id)}
+                                      disabled={isAddingAccused || !accusedForm.name || !accusedForm.address}
+                                      className="flex items-center gap-2"
+                                    >
+                                      <UserPlus className="h-4 w-4" />
+                                      {isAddingAccused ? 'Adding...' : 'Add Accused Person'}
+                                    </Button>
+                                  </div>
+
+                                  {/* Attach Documents */}
+                                  <div className="space-y-4">
+                                    <h4 className="font-semibold flex items-center gap-2">
+                                      <Upload className="h-4 w-4" />
+                                      Attach Documents
+                                    </h4>
+                                    <div className="space-y-4">
+                                      <div>
+                                        <Label htmlFor="documentType">Document Type *</Label>
+                                        <Select value={documentType} onValueChange={setDocumentType}>
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Select document type" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="ORDER">Court Order</SelectItem>
+                                            <SelectItem value="SUMMON">Summon</SelectItem>
+                                            <SelectItem value="NOTICE">Notice</SelectItem>
+                                            <SelectItem value="JUDGMENT">Judgment</SelectItem>
+                                            <SelectItem value="OTHER">Other</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="documentDescription">Description</Label>
+                                        <Textarea
+                                          id="documentDescription"
+                                          value={documentDescription}
+                                          onChange={(e) => setDocumentDescription(e.target.value)}
+                                          placeholder="Brief description of the document(s)"
+                                          rows={3}
+                                        />
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="documents">Select Files *</Label>
+                                        <Input
+                                          id="documents"
+                                          type="file"
+                                          multiple
+                                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                          onChange={(e) => setSelectedFiles(e.target.files)}
+                                          className="cursor-pointer"
+                                        />
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          Supported formats: PDF, DOC, DOCX, JPG, JPEG, PNG (Max 5 files)
+                                        </p>
+                                      </div>
+                                      <Button 
+                                        onClick={() => handleUploadDocuments(selectedCase._id)}
+                                        disabled={isUploadingDocuments || !documentType || !selectedFiles}
+                                        className="flex items-center gap-2"
+                                      >
+                                        <Upload className="h-4 w-4" />
+                                        {isUploadingDocuments ? 'Uploading...' : 'Upload Documents'}
                                       </Button>
                                     </div>
                                   </div>

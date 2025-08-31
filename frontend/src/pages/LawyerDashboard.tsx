@@ -142,12 +142,11 @@ const LawyerDashboard: React.FC = () => {
       console.error('Error fetching dashboard data:', err);
       setError('Failed to load dashboard data');
       
-      // Use mock data for demo
       setStats({
-        requests: Math.floor(Math.random() * 8) + 1,
-        cases: Math.floor(Math.random() * 5) + 1,
-        notifications: Math.floor(Math.random() * 6) + 1,
-        recentActivity: generateMockActivity()
+        requests: 0,
+        cases: 0,
+        notifications: 0,
+        recentActivity: []
       });
     } finally {
       setLoading(false);
@@ -167,47 +166,7 @@ const LawyerDashboard: React.FC = () => {
     return date.toLocaleDateString();
   };
 
-  const generateMockActivity = () => [
-    {
-      id: '1',
-      type: 'request',
-      title: 'New Client Request',
-      description: 'Citizen requested representation for theft case',
-      time: '45 minutes ago',
-      status: 'PENDING'
-    },
-    {
-      id: '2',
-      type: 'case',
-      title: 'Hearing Scheduled',
-      description: 'Court hearing for CASE-2025-001 tomorrow',
-      time: '2 hours ago',
-      status: 'ONGOING'
-    },
-    {
-      id: '3',
-      type: 'notification',
-      title: 'Document Submission',
-      description: 'Evidence documents uploaded successfully',
-      time: '1 day ago'
-    },
-    {
-      id: '4',
-      type: 'request',
-      title: 'Request Accepted',
-      description: 'Accepted representation for fraud case',
-      time: '2 days ago',
-      status: 'ACCEPTED'
-    },
-    {
-      id: '5',
-      type: 'case',
-      title: 'Case Assignment',
-      description: 'New case assigned after client acceptance',
-      time: '3 days ago',
-      status: 'PENDING'
-    }
-  ];
+
 
   const getActivityIcon = (type: string) => {
     switch (type) {

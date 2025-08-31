@@ -2,9 +2,17 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import multer from "multer";
-import { Lawyer, LawyerRequest, Case, FIR, Notification, CaseProceeding } from "../models/index.js";
+import {
+  Lawyer,
+  LawyerRequest,
+  Case,
+  FIR,
+  Notification,
+  CaseProceeding,
+} from "../models/index.js";
 import { authenticateToken } from "../middleware/auth.js";
-import { uploadToIPFS, appendCaseProceeding } from "../utils/ipfs.js";
+import { uploadToIPFS } from "../utils/ipfs.js";
+import { appendCaseProceeding } from "../utils/caseProceedings.js";
 
 const router = express.Router();
 
@@ -283,10 +291,7 @@ router.get("/cases", authenticateToken, async (req, res) => {
     const lawyerId = req.user.id;
 
     const cases = await Case.find({
-      $or: [
-        { accusedLawyerId: lawyerId },
-        { prosecutorLawyerId: lawyerId },
-      ],
+      $or: [{ accusedLawyerId: lawyerId }, { prosecutorLawyerId: lawyerId }],
     })
       .populate("firId")
       .populate("assignedJudgeId", "name courtName")
@@ -327,10 +332,7 @@ router.get("/cases/:caseId", authenticateToken, async (req, res) => {
 
     const caseData = await Case.findOne({
       _id: caseId,
-      $or: [
-        { accusedLawyerId: lawyerId },
-        { prosecutorLawyerId: lawyerId },
-      ],
+      $or: [{ accusedLawyerId: lawyerId }, { prosecutorLawyerId: lawyerId }],
     })
       .populate("firId")
       .populate("assignedJudgeId", "name courtName")
@@ -383,10 +385,7 @@ router.post(
       // Verify case exists and lawyer is assigned
       const caseData = await Case.findOne({
         _id: caseId,
-        $or: [
-          { accusedLawyerId: lawyerId },
-          { prosecutorLawyerId: lawyerId },
-        ],
+        $or: [{ accusedLawyerId: lawyerId }, { prosecutorLawyerId: lawyerId }],
       });
 
       if (!caseData) {
@@ -423,12 +422,31 @@ router.post(
       // Append proceeding: DOCUMENT_FILED or EVIDENCE_SUBMITTED
       await appendCaseProceeding(CaseProceeding, {
         caseId: caseData._id,
-        type: documentType === "EVIDENCE" ? "EVIDENCE_SUBMITTED" : "DOCUMENT_FILED",
+        type:
+          documentType === "EVIDENCE" ? "EVIDENCE_SUBMITTED" : "DOCUMENT_FILED",
         createdByRole: "LAWYER",
         createdById: lawyerId,
         description: description || "Document(s) submitted",
-        attachments: documents.map(d => ({ fileName: d.fileName, ipfsHash: d.ipfsHash, fileSize: d.fileSize })),
+        attachments: documents.map((d) => ({
+          fileName: d.fileName,
+          ipfsHash: d.ipfsHash,
+          fileSize: d.fileSize,
+        })),
         metadata: { documentType: documentType || "GENERAL" },
+      });
+
+      // Notify all parties about document submission
+      const { notifyCaseParties } = await import("../utils/notifications.js");
+      await notifyCaseParties(Notification, {
+        caseId: caseData._id,
+        firId: caseData.firId,
+        complaintId: caseData.firId?.complaintId,
+        title: "Documents Submitted",
+        message: `New documents submitted in case ${caseData.caseNumber}`,
+        type:
+          documentType === "EVIDENCE" ? "EVIDENCE_SUBMITTED" : "DOCUMENT_FILED",
+        metadata: { documentType: documentType || "GENERAL", description },
+        excludeRecipients: [lawyerId], // Don't notify the lawyer who submitted
       });
 
       // Add documents to case (placeholder response)
@@ -452,32 +470,41 @@ router.post(
 );
 
 // Get proceedings for a case (lawyer view)
-router.get("/cases/:caseId/proceedings", authenticateToken, async (req, res) => {
-  try {
-    const { caseId } = req.params;
-    const lawyerId = req.user.id;
+router.get(
+  "/cases/:caseId/proceedings",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { caseId } = req.params;
+      const lawyerId = req.user.id;
 
-    const caseData = await Case.findOne({
-      _id: caseId,
-      $or: [
-        { accusedLawyerId: lawyerId },
-        { prosecutorLawyerId: lawyerId },
-      ],
-    });
+      const caseData = await Case.findOne({
+        _id: caseId,
+        $or: [{ accusedLawyerId: lawyerId }, { prosecutorLawyerId: lawyerId }],
+      });
 
-    if (!caseData) {
-      return res.status(404).json({ success: false, message: "Case not found or not assigned to you" });
+      if (!caseData) {
+        return res.status(404).json({
+          success: false,
+          message: "Case not found or not assigned to you",
+        });
+      }
+
+      const proceedings = await CaseProceeding.find({ caseId }).sort({
+        createdAt: -1,
+      });
+
+      res.json({ success: true, data: proceedings });
+    } catch (error) {
+      console.error("Get case proceedings error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to get case proceedings",
+        error: error.message,
+      });
     }
-
-    const proceedings = await CaseProceeding.find({ caseId })
-      .sort({ createdAt: -1 });
-
-    res.json({ success: true, data: proceedings });
-  } catch (error) {
-    console.error("Get case proceedings error:", error);
-    res.status(500).json({ success: false, message: "Failed to get case proceedings", error: error.message });
   }
-});
+);
 
 // =============== NOTIFICATIONS ===============
 
@@ -528,42 +555,46 @@ router.get("/notifications", authenticateToken, async (req, res) => {
 });
 
 // Mark notification as read
-router.put("/notifications/:notificationId/read", authenticateToken, async (req, res) => {
-  try {
-    const { notificationId } = req.params;
-    const lawyerId = req.user.id;
+router.put(
+  "/notifications/:notificationId/read",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { notificationId } = req.params;
+      const lawyerId = req.user.id;
 
-    const notification = await Notification.findOneAndUpdate(
-      {
-        _id: notificationId,
-        recipientId: lawyerId,
-        recipientType: "LAWYER",
-      },
-      { isRead: true },
-      { new: true }
-    );
+      const notification = await Notification.findOneAndUpdate(
+        {
+          _id: notificationId,
+          recipientId: lawyerId,
+          recipientType: "LAWYER",
+        },
+        { isRead: true },
+        { new: true }
+      );
 
-    if (!notification) {
-      return res.status(404).json({
+      if (!notification) {
+        return res.status(404).json({
+          success: false,
+          message: "Notification not found",
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Notification marked as read",
+        data: notification,
+      });
+    } catch (error) {
+      console.error("Mark notification read error:", error);
+      res.status(500).json({
         success: false,
-        message: "Notification not found",
+        message: "Failed to mark notification as read",
+        error: error.message,
       });
     }
-
-    res.json({
-      success: true,
-      message: "Notification marked as read",
-      data: notification,
-    });
-  } catch (error) {
-    console.error("Mark notification read error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to mark notification as read",
-      error: error.message,
-    });
   }
-});
+);
 
 // Mark all notifications as read
 router.put("/notifications/read-all", authenticateToken, async (req, res) => {

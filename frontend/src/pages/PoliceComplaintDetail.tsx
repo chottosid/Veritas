@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,7 +26,11 @@ import {
   Building2,
   Phone,
   FileBarChart,
-  Plus
+  Plus,
+  X,
+  UserPlus,
+  Users,
+  Trash2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -52,6 +56,23 @@ interface Judge {
   jid: string;
 }
 
+interface AccusedPerson {
+  _id?: string;
+  name: string;
+  address: string;
+  phone?: string;
+  email?: string;
+  nid?: string;
+  age?: number;
+  gender?: 'MALE' | 'FEMALE' | 'OTHER';
+  occupation?: string;
+  relationshipToComplainant?: string;
+  addedBy: 'CITIZEN' | 'POLICE';
+  addedById: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 interface Complaint {
   _id: string;
   title: string;
@@ -60,6 +81,7 @@ interface Complaint {
   status: 'PENDING' | 'UNDER_INVESTIGATION' | 'FIR_REGISTERED' | 'CLOSED';
   complainantId: Complainant;
   assignedOfficerIds: Officer[];
+  accused: AccusedPerson[];
   attachments: Array<{
     fileName: string;
     ipfsHash: string;
@@ -73,6 +95,7 @@ interface Complaint {
 export const PoliceComplaintDetail = () => {
   const { complaintId } = useParams<{ complaintId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   
   const [complaint, setComplaint] = useState<Complaint | null>(null);
@@ -94,12 +117,25 @@ export const PoliceComplaintDetail = () => {
   const [evidenceDescription, setEvidenceDescription] = useState("");
   const [evidenceFiles, setEvidenceFiles] = useState<FileList | null>(null);
 
+  // Accused form state
+  const [policeAccused, setPoliceAccused] = useState<AccusedPerson[]>([]);
+
   useEffect(() => {
     if (complaintId) {
       fetchComplaintDetail();
       fetchJudges();
     }
   }, [complaintId]);
+
+  // Check if FIR form should be opened automatically
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'register-fir' && complaint && complaint.status === 'UNDER_INVESTIGATION') {
+      setShowFIRForm(true);
+      // Clear the action parameter from URL
+      navigate(`/police/complaints/${complaintId}`, { replace: true });
+    }
+  }, [complaint, searchParams, complaintId, navigate]);
 
   const fetchComplaintDetail = async () => {
     try {
@@ -131,6 +167,80 @@ export const PoliceComplaintDetail = () => {
     }
   };
 
+  const addPoliceAccused = () => {
+    const newAccused: AccusedPerson = {
+      _id: Date.now().toString(),
+      name: '',
+      address: '',
+      phone: '',
+      email: '',
+      nid: '',
+      age: undefined,
+      gender: undefined,
+      occupation: '',
+      relationshipToComplainant: '',
+      addedBy: 'POLICE',
+      addedById: ''
+    };
+    setPoliceAccused(prev => [...prev, newAccused]);
+  };
+
+  const removePoliceAccused = (id: string) => {
+    setPoliceAccused(prev => prev.filter(acc => acc._id !== id));
+  };
+
+  const updatePoliceAccused = (id: string, field: keyof AccusedPerson, value: any) => {
+    setPoliceAccused(prev => prev.map(acc => 
+      acc._id === id ? { ...acc, [field]: value } : acc
+    ));
+  };
+
+  const validatePoliceAccused = (): boolean => {
+    for (const acc of policeAccused) {
+      if (!acc.name.trim()) {
+        toast({
+          title: "Validation Error",
+          description: "All accused must have a name",
+          variant: "destructive",
+        });
+        return false;
+      }
+      if (!acc.address.trim()) {
+        toast({
+          title: "Validation Error",
+          description: "All accused must have an address",
+          variant: "destructive",
+        });
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const getGenderLabel = (gender: string) => {
+    switch (gender) {
+      case 'MALE':
+        return 'Male';
+      case 'FEMALE':
+        return 'Female';
+      case 'OTHER':
+        return 'Other';
+      default:
+        return 'Not specified';
+    }
+  };
+
+  const getAddedByLabel = (addedBy: string) => {
+    switch (addedBy) {
+      case 'CITIZEN':
+        return 'Added by Complainant';
+      case 'POLICE':
+        return 'Added by Police';
+      default:
+        return 'Unknown';
+    }
+  };
+
   const handleCreateFIR = async () => {
     if (!firNumber.trim() || !sections.trim()) {
       toast({
@@ -138,6 +248,10 @@ export const PoliceComplaintDetail = () => {
         description: "Please provide FIR number and legal sections",
         variant: "destructive"
       });
+      return;
+    }
+
+    if (!validatePoliceAccused()) {
       return;
     }
 
@@ -149,6 +263,10 @@ export const PoliceComplaintDetail = () => {
       
       if (selectedJudgeId) {
         formData.append('judgeId', selectedJudgeId);
+      }
+      
+      if (policeAccused.length > 0) {
+        formData.append('accused', JSON.stringify(policeAccused));
       }
       
       if (firAttachments) {
@@ -165,18 +283,20 @@ export const PoliceComplaintDetail = () => {
 
       if (response.data.success) {
         toast({
-          title: "Success",
-          description: "FIR registered successfully",
+          title: "FIR Created Successfully",
+          description: "The FIR has been registered and the case is now active",
         });
         setShowFIRForm(false);
-        fetchComplaintDetail(); // Refresh data
+        fetchComplaintDetail(); // Refresh to show updated status
+      } else {
+        throw new Error(response.data.message || 'Failed to create FIR');
       }
-    } catch (err: any) {
-      console.error('Error creating FIR:', err);
+    } catch (error: any) {
+      console.error('Error creating FIR:', error);
       toast({
         title: "Error",
-        description: err.response?.data?.message || 'Failed to register FIR',
-        variant: "destructive"
+        description: error.response?.data?.message || error.message || "Failed to create FIR",
+        variant: "destructive",
       });
     } finally {
       setCreatingFIR(false);
@@ -417,6 +537,42 @@ export const PoliceComplaintDetail = () => {
                 </CardContent>
               </Card>
 
+              {/* Accused Persons */}
+              {complaint.accused.length > 0 && (
+                <Card className="card-elegant">
+                  <CardHeader>
+                    <CardTitle>Accused Persons</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {complaint.accused.map((accused, index) => (
+                        <div key={accused._id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <User className="h-8 w-8 text-red-500" />
+                            <div>
+                              <p className="font-medium">{accused.name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                Address: {accused.address}, Phone: {accused.phone || 'N/A'}, NID: {accused.nid || 'N/A'}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                Added by: {getAddedByLabel(accused.addedBy)}
+                              </p>
+                            </div>
+                          </div>
+                          <Button variant="outline" size="sm" onClick={() => removePoliceAccused(accused._id!)}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    <Button variant="outline" onClick={addPoliceAccused} className="mt-4">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Accused Person
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Attachments */}
               {complaint.attachments.length > 0 && (
                 <Card className="card-elegant">
@@ -526,22 +682,41 @@ export const PoliceComplaintDetail = () => {
           {/* FIR Form Modal */}
           {showFIRForm && (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-              <Card className="w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+              <Card className="w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
                 <CardHeader>
                   <CardTitle>Register FIR</CardTitle>
                   <CardDescription>
                     Convert this complaint to a formal FIR for court proceedings
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label htmlFor="firNumber">FIR Number *</Label>
-                    <Input
-                      id="firNumber"
-                      value={firNumber}
-                      onChange={(e) => setFirNumber(e.target.value)}
-                      placeholder="e.g., FIR-2025-001"
-                    />
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="firNumber">FIR Number *</Label>
+                      <Input
+                        id="firNumber"
+                        value={firNumber}
+                        onChange={(e) => setFirNumber(e.target.value)}
+                        placeholder="e.g., FIR-2025-001"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="judge">Assign to Judge (Optional)</Label>
+                      <select
+                        id="judge"
+                        value={selectedJudgeId}
+                        onChange={(e) => setSelectedJudgeId(e.target.value)}
+                        className="w-full px-3 py-2 border rounded-md text-sm bg-background"
+                      >
+                        <option value="">Select a judge...</option>
+                        {judges.map((judge) => (
+                          <option key={judge._id} value={judge._id}>
+                            {judge.name} - {judge.courtName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                   
                   <div>
@@ -556,22 +731,131 @@ export const PoliceComplaintDetail = () => {
                       Enter comma-separated legal sections
                     </p>
                   </div>
-                  
-                  <div>
-                    <Label htmlFor="judge">Assign to Judge (Optional)</Label>
-                    <select
-                      id="judge"
-                      value={selectedJudgeId}
-                      onChange={(e) => setSelectedJudgeId(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-md text-sm bg-background"
-                    >
-                      <option value="">Select a judge...</option>
-                      {judges.map((judge) => (
-                        <option key={judge._id} value={judge._id}>
-                          {judge.name} - {judge.courtName}
-                        </option>
-                      ))}
-                    </select>
+
+                  {/* Accused Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">Add Accused Persons (Optional)</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addPoliceAccused}
+                        className="flex items-center gap-2"
+                      >
+                        <UserPlus className="h-4 w-4" />
+                        Add Accused
+                      </Button>
+                    </div>
+                    
+                    <p className="text-sm text-slate-600">
+                      Add details of accused persons if not already provided by the complainant
+                    </p>
+
+                    {policeAccused.length > 0 && (
+                      <div className="space-y-4">
+                        {policeAccused.map((acc, index) => (
+                          <Card key={acc._id} className="border border-slate-200">
+                            <CardHeader className="pb-3">
+                              <div className="flex items-center justify-between">
+                                <CardTitle className="text-lg flex items-center gap-2">
+                                  <Users className="h-5 w-5" />
+                                  Accused Person {index + 1}
+                                </CardTitle>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removePoliceAccused(acc._id!)}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-medium">Full Name *</Label>
+                                  <Input
+                                    placeholder="Enter full name"
+                                    value={acc.name}
+                                    onChange={(e) => updatePoliceAccused(acc._id!, 'name', e.target.value)}
+                                    required
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-medium">Address *</Label>
+                                  <Input
+                                    placeholder="Enter address"
+                                    value={acc.address}
+                                    onChange={(e) => updatePoliceAccused(acc._id!, 'address', e.target.value)}
+                                    required
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-medium">Phone Number</Label>
+                                  <Input
+                                    placeholder="Enter phone number"
+                                    value={acc.phone || ''}
+                                    onChange={(e) => updatePoliceAccused(acc._id!, 'phone', e.target.value)}
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-medium">Email</Label>
+                                  <Input
+                                    type="email"
+                                    placeholder="Enter email address"
+                                    value={acc.email || ''}
+                                    onChange={(e) => updatePoliceAccused(acc._id!, 'email', e.target.value)}
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-medium">NID Number</Label>
+                                  <Input
+                                    placeholder="Enter NID number"
+                                    value={acc.nid || ''}
+                                    onChange={(e) => updatePoliceAccused(acc._id!, 'nid', e.target.value)}
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-medium">Age</Label>
+                                  <Input
+                                    type="number"
+                                    placeholder="Enter age"
+                                    value={acc.age || ''}
+                                    onChange={(e) => updatePoliceAccused(acc._id!, 'age', e.target.value ? parseInt(e.target.value) : undefined)}
+                                    min="1"
+                                    max="120"
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-medium">Gender</Label>
+                                  <select
+                                    value={acc.gender || ''}
+                                    onChange={(e) => updatePoliceAccused(acc._id!, 'gender', e.target.value)}
+                                    className="w-full px-3 py-2 border rounded-md text-sm bg-background"
+                                  >
+                                    <option value="">Select gender</option>
+                                    <option value="MALE">Male</option>
+                                    <option value="FEMALE">Female</option>
+                                    <option value="OTHER">Other</option>
+                                  </select>
+                                </div>
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-medium">Occupation</Label>
+                                  <Input
+                                    placeholder="Enter occupation"
+                                    value={acc.occupation || ''}
+                                    onChange={(e) => updatePoliceAccused(acc._id!, 'occupation', e.target.value)}
+                                  />
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   
                   <div>

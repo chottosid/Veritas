@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Layout } from "@/components/layout/Layout";
 import { api } from "@/lib/api";
+import { useAuthStore } from "@/store/authStore";
 import { 
   Scale, 
   Calendar, 
@@ -34,6 +35,49 @@ interface CaseDetail {
   firId: {
     firNumber: string;
     sections?: string[];
+    complaintId: {
+      title: string;
+      description: string;
+      complainantId: {
+        name: string;
+        nid: string;
+        phone: string;
+      };
+      accused?: Array<{
+        name: string;
+        address: string;
+        phone?: string;
+        email?: string;
+        nid?: string;
+        age?: number;
+        gender?: string;
+        occupation?: string;
+        relationshipToComplainant?: string;
+      }>;
+      attachments?: Array<{
+        fileName: string;
+        ipfsHash: string;
+        fileSize: number;
+        uploadedAt: string;
+      }>;
+    };
+    accused?: Array<{
+      name: string;
+      address: string;
+      phone?: string;
+      email?: string;
+      nid?: string;
+      age?: number;
+      gender?: string;
+      occupation?: string;
+      relationshipToComplainant?: string;
+    }>;
+    attachments?: Array<{
+      fileName: string;
+      ipfsHash: string;
+      fileSize: number;
+      uploadedAt: string;
+    }>;
   };
   assignedJudgeId?: {
     name: string;
@@ -55,6 +99,28 @@ interface CaseDetail {
   hearingDates?: string[];
   verdict?: string;
   createdAt: string;
+  allAccused?: Array<{
+    name: string;
+    address: string;
+    phone?: string;
+    email?: string;
+    nid?: string;
+    age?: number;
+    gender?: string;
+    occupation?: string;
+    relationshipToComplainant?: string;
+  }>;
+  allDocuments?: Array<{
+    fileName: string;
+    ipfsHash: string;
+    fileSize: number;
+    uploadedAt: string;
+    documentSource: string;
+    proceedingType: string;
+    proceedingDescription: string;
+    createdByRole: string;
+    createdAt: string;
+  }>;
 }
 
 interface Proceeding {
@@ -74,27 +140,72 @@ export const CaseDetail = () => {
   const { caseId } = useParams<{ caseId: string }>();
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const [caseDetail, setCaseDetail] = useState<CaseDetail | null>(null);
   const [proceedings, setProceedings] = useState<Proceeding[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [proceedingsLoading, setProceedingsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Get case data from navigation state
-    const passedCaseData = location.state?.caseData;
-    
-    if (passedCaseData) {
-      setCaseDetail(passedCaseData);
-      setLoading(false);
-      // Fetch proceedings if needed
-      fetchProceedings();
-    } else {
-      // If no data passed, redirect back to cases list
-      setError("No case data provided. Please select a case from the list.");
-      setLoading(false);
-    }
-  }, [location.state, caseId]);
+    const fetchCaseData = async () => {
+      try {
+        setLoading(true);
+        
+        // Get case data from navigation state
+        const passedCaseData = location.state?.caseData;
+        
+        if (passedCaseData) {
+          setCaseDetail(passedCaseData);
+          // Fetch proceedings if needed
+          fetchProceedings();
+        } else if (caseId && user?.role === 'JUDGE') {
+          // For judges, fetch case details directly from API
+          const response = await api.get(`/judges/cases/${caseId}`);
+          if (response.data.success) {
+            console.log('Judge case details received:', {
+              allDocuments: response.data.data.allDocuments?.length || 0,
+              documents: response.data.data.allDocuments?.map(d => ({
+                fileName: d.fileName,
+                documentSource: d.documentSource,
+                ipfsHash: d.ipfsHash
+              }))
+            });
+            setCaseDetail(response.data.data);
+          } else {
+            setError("Failed to fetch case details");
+          }
+        } else if (caseId && user?.role === 'CITIZEN') {
+          // For citizens, try to fetch case details from citizen API
+          try {
+            const response = await api.get(`/citizens/cases/${caseId}`);
+            if (response.data.success) {
+              setCaseDetail(response.data.data);
+            } else {
+              setError("Failed to fetch case details");
+            }
+          } catch (err) {
+            setError("No case data provided. Please select a case from the list.");
+          }
+        } else {
+          // If no data passed and not a judge or citizen, redirect back to cases list
+          setError("No case data provided. Please select a case from the list.");
+        }
+      } catch (err: any) {
+        console.error('Error fetching case data:', err);
+        console.error('Error details:', {
+          status: err.response?.status,
+          data: err.response?.data,
+          message: err.message
+        });
+        setError(err.response?.data?.message || err.message || "Failed to fetch case details");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCaseData();
+  }, [location.state, caseId, user?.role]);
 
   const fetchProceedings = async () => {
     try {
@@ -231,7 +342,7 @@ export const CaseDetail = () => {
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Button variant="outline" size="sm" asChild>
-            <Link to="/cases">
+            <Link to={user?.role === 'JUDGE' ? '/judge/cases' : '/cases'}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Cases
             </Link>
@@ -328,11 +439,19 @@ export const CaseDetail = () => {
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {/* Note about complainant */}
-                    <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
-                      <p className="text-sm text-blue-800">
-                        <strong>Note:</strong> You are the complainant in this case. Your complaint was converted to an FIR and then to this legal case.
-                      </p>
-                    </div>
+                    {user?.role === 'CITIZEN' ? (
+                      <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+                        <p className="text-sm text-blue-800">
+                          <strong>Note:</strong> You are the complainant in this case. Your complaint was converted to an FIR and then to this legal case.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="p-3 rounded-lg bg-green-50 border border-green-200">
+                        <p className="text-sm text-green-800">
+                          <strong>Complainant:</strong> {caseDetail.firId.complaintId.complainantId.name} (NID: {caseDetail.firId.complaintId.complainantId.nid})
+                        </p>
+                      </div>
+                    )}
 
                     {/* Legal Representation */}
                     {(caseDetail.accusedLawyerId || caseDetail.prosecutorLawyerId) && (
@@ -384,6 +503,85 @@ export const CaseDetail = () => {
                                   <MapPin className="h-3 w-3" />
                                   {officer.station}
                                 </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Accused Information */}
+                    {caseDetail.allAccused && caseDetail.allAccused.length > 0 && (
+                      <div>
+                        <h4 className="font-medium mb-3">Accused Persons</h4>
+                        <div className="space-y-3">
+                          {caseDetail.allAccused.map((accused, index) => (
+                            <div key={index} className="p-4 rounded-lg border border-red-200 bg-red-50">
+                              <div className="flex items-start gap-3">
+                                <User className="h-5 w-5 text-red-600 mt-1" />
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <h5 className="font-medium text-red-900">{accused.name}</h5>
+                                    {accused.age && (
+                                      <Badge variant="outline" className="text-xs">
+                                        Age: {accused.age}
+                                      </Badge>
+                                    )}
+                                    {accused.gender && (
+                                      <Badge variant="outline" className="text-xs">
+                                        {accused.gender}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                    <div>
+                                      <span className="font-medium text-red-800">Address:</span>
+                                      <p className="text-red-700">{accused.address}</p>
+                                    </div>
+                                  
+                                    {accused.phone && (
+                                      <div>
+                                        <span className="font-medium text-red-800">Phone:</span>
+                                        <p className="text-red-700 flex items-center gap-1">
+                                          <Phone className="h-3 w-3" />
+                                          {accused.phone}
+                                        </p>
+                                      </div>
+                                    )}
+                                  
+                                    {accused.email && (
+                                      <div>
+                                        <span className="font-medium text-red-800">Email:</span>
+                                        <p className="text-red-700 flex items-center gap-1">
+                                          <Mail className="h-3 w-3" />
+                                          {accused.email}
+                                        </p>
+                                      </div>
+                                    )}
+                                  
+                                    {accused.nid && (
+                                      <div>
+                                        <span className="font-medium text-red-800">NID:</span>
+                                        <p className="text-red-700">{accused.nid}</p>
+                                      </div>
+                                    )}
+                                  
+                                    {accused.occupation && (
+                                      <div>
+                                        <span className="font-medium text-red-800">Occupation:</span>
+                                        <p className="text-red-700">{accused.occupation}</p>
+                                      </div>
+                                    )}
+                                  
+                                    {accused.relationshipToComplainant && (
+                                      <div>
+                                        <span className="font-medium text-red-800">Relationship:</span>
+                                        <p className="text-red-700">{accused.relationshipToComplainant}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           ))}
@@ -478,10 +676,66 @@ export const CaseDetail = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-center py-8">
-                      <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground">Document management coming soon</p>
-                    </div>
+                    {caseDetail.allDocuments && caseDetail.allDocuments.length > 0 ? (
+                      <div className="space-y-4">
+                        {caseDetail.allDocuments.map((document, index) => (
+                          <div key={`${document.ipfsHash}-${document.documentSource}-${index}`} className="p-4 rounded-lg border bg-muted/30">
+                            <div className="flex items-start justify-between">
+                              <div className="flex items-start gap-3 flex-1">
+                                <FileText className="h-5 w-5 text-primary mt-1" />
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <h4 className="font-medium">{document.fileName}</h4>
+                                    <Badge variant="outline" className="text-xs">
+                                      {document.documentSource}
+                                    </Badge>
+                                    <Badge variant="secondary" className="text-xs">
+                                      {document.createdByRole}
+                                    </Badge>
+                                  </div>
+                                  
+                                  <p className="text-sm text-muted-foreground mb-2">
+                                    {document.proceedingDescription}
+                                  </p>
+                                  
+                                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                    <span>Size: {(document.fileSize / 1024 / 1024).toFixed(2)} MB</span>
+                                    <span>Uploaded: {formatDateTime(document.uploadedAt)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => window.open(`https://gateway.pinata.cloud/ipfs/${document.ipfsHash}`, '_blank')}
+                                >
+                                  View
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    const link = document.createElement('a');
+                                    link.href = `https://gateway.pinata.cloud/ipfs/${document.ipfsHash}`;
+                                    link.download = document.fileName;
+                                    link.click();
+                                  }}
+                                >
+                                  Download
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <p className="text-muted-foreground">No documents available for this case</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>

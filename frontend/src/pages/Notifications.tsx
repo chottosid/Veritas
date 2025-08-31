@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Layout } from "@/components/layout/Layout";
 import { useAuthStore } from "@/store/authStore";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import { api } from "@/lib/api";
 import { 
   Bell, 
@@ -21,7 +22,9 @@ import {
   EyeOff,
   Trash2,
   Filter,
-  RefreshCw
+  RefreshCw,
+  Wifi,
+  WifiOff
 } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -47,6 +50,7 @@ interface Notification {
     hearingDate?: string;
     [key: string]: any;
   };
+  priority: 'low' | 'normal' | 'high' | 'urgent';
   createdAt: string;
 }
 
@@ -73,9 +77,14 @@ export const Notifications = () => {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   
-  // Polling state
-  const [lastPolled, setLastPolled] = useState<Date>(new Date());
-  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  // WebSocket hook for real-time notifications
+  const { 
+    isConnected, 
+    notifications: wsNotifications, 
+    unreadCount: wsUnreadCount,
+    markAsRead: wsMarkAsRead,
+    markAllAsRead: wsMarkAllAsRead 
+  } = useWebSocket();
 
   const getNotificationEndpoint = () => {
     switch (user?.role) {
@@ -108,7 +117,6 @@ export const Notifications = () => {
       if (response.data.success) {
         setNotifications(response.data.data);
         setPagination(response.data.pagination);
-        setLastPolled(new Date());
       } else {
         if (!silent) {
           setError(response.data.message || 'Failed to fetch notifications');
@@ -124,42 +132,29 @@ export const Notifications = () => {
     }
   }, []);
 
-  // Start polling
-  const startPolling = useCallback(() => {
-    if (pollingInterval) clearInterval(pollingInterval);
-    
-    const interval = setInterval(() => {
-      fetchNotifications(pagination.currentPage, filter === 'unread', true);
-    }, 30000); // Poll every 30 seconds
-    
-    setPollingInterval(interval);
-  }, [fetchNotifications, pagination.currentPage, filter]);
-
-  // Stop polling
-  const stopPolling = useCallback(() => {
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-      setPollingInterval(null);
-    }
-  }, [pollingInterval]);
-
+  // Load initial notifications
   useEffect(() => {
     fetchNotifications(1, filter === 'unread');
-    startPolling();
-    
-    return () => stopPolling();
-  }, [filter]);
+  }, [filter, fetchNotifications]);
 
+  // Sync WebSocket notifications with local state
   useEffect(() => {
-    // Update polling when page changes
-    if (pollingInterval) {
-      stopPolling();
-      startPolling();
+    if (wsNotifications.length > 0) {
+      // Merge WebSocket notifications with fetched notifications
+      setNotifications(prev => {
+        const existingIds = new Set(prev.map(n => n._id));
+        const newNotifications = wsNotifications.filter(n => !existingIds.has(n._id));
+        return [...newNotifications, ...prev];
+      });
     }
-  }, [pagination.currentPage]);
+  }, [wsNotifications]);
 
   const markAsRead = async (notificationId: string) => {
     try {
+      // Update local state immediately
+      wsMarkAsRead(notificationId);
+      
+      // Also update on server
       const endpoint = getNotificationEndpoint();
       const response = await api.put(`${endpoint}/${notificationId}/read`);
       
@@ -180,6 +175,11 @@ export const Notifications = () => {
   const markAllAsRead = async () => {
     try {
       setMarkingAllRead(true);
+      
+      // Update local state immediately
+      wsMarkAllAsRead();
+      
+      // Also update on server
       const endpoint = getNotificationEndpoint();
       const response = await api.put(`${endpoint}/read-all`);
       
@@ -203,13 +203,24 @@ export const Notifications = () => {
       case 'HEARING_SCHEDULED':
         return <Calendar className="h-4 w-4 text-purple-500" />;
       case 'CASE_CREATED':
+      case 'CASE_ASSIGNED':
         return <Scale className="h-4 w-4 text-blue-500" />;
       case 'FIR_REGISTERED':
+      case 'FIR_SUBMITTED':
+      case 'FIR_REJECTED':
         return <FileText className="h-4 w-4 text-green-500" />;
       case 'EVIDENCE_SUBMITTED':
+      case 'DOCUMENT_FILED':
         return <FileText className="h-4 w-4 text-orange-500" />;
       case 'STATUS_CHANGED':
         return <AlertCircle className="h-4 w-4 text-yellow-500" />;
+      case 'COMPLAINT_SUBMITTED':
+      case 'COMPLAINT_ASSIGNED':
+        return <AlertCircle className="h-4 w-4 text-indigo-500" />;
+      case 'LAWYER_REQUEST_ACCEPTED':
+      case 'LAWYER_REQUEST_REJECTED':
+      case 'LAWYER_REQUEST_PENDING':
+        return <Scale className="h-4 w-4 text-teal-500" />;
       default:
         return <Bell className="h-4 w-4 text-gray-500" />;
     }
@@ -223,6 +234,16 @@ export const Notifications = () => {
       return `/complaints/${notification.complaintId._id}`;
     }
     return null;
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return 'bg-red-500';
+      case 'high': return 'bg-orange-500';
+      case 'normal': return 'bg-blue-500';
+      case 'low': return 'bg-gray-500';
+      default: return 'bg-gray-500';
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -247,15 +268,15 @@ export const Notifications = () => {
 
   const LoadingSkeleton = () => (
     <div className="space-y-4">
-      {[...Array(5)].map((_, index) => (
-        <Card key={index} className="card-elegant">
-          <CardContent className="p-4">
-            <div className="flex gap-3">
-              <Skeleton className="h-8 w-8 rounded-full" />
-              <div className="space-y-2 flex-1">
+      {Array.from({ length: 5 }, (_, i) => (
+        <Card key={i}>
+          <CardContent className="p-6">
+            <div className="flex items-start space-x-4">
+              <Skeleton className="h-4 w-4 rounded-full" />
+              <div className="flex-1 space-y-2">
                 <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-full" />
                 <Skeleton className="h-3 w-1/2" />
-                <Skeleton className="h-3 w-1/4" />
               </div>
             </div>
           </CardContent>
@@ -264,7 +285,9 @@ export const Notifications = () => {
     </div>
   );
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const filteredNotifications = filter === 'unread' 
+    ? notifications.filter(n => !n.isRead)
+    : notifications;
 
   return (
     <Layout>
@@ -272,19 +295,67 @@ export const Notifications = () => {
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Bell className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold">Notifications</h1>
-                <p className="text-muted-foreground">
-                  Stay updated with your case progress and important updates
-                </p>
-              </div>
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Notifications</h1>
+              <p className="text-muted-foreground mt-2">
+                Stay updated with real-time notifications about your cases and activities
+              </p>
             </div>
             
-            <div className="flex items-center gap-2">
+            {/* WebSocket Status */}
+            <div className="flex items-center space-x-2">
+              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+              <span className="text-sm text-muted-foreground">
+                {isConnected ? 'Real-time' : 'Offline'}
+              </span>
+              {isConnected ? <Wifi className="h-4 w-4 text-green-500" /> : <WifiOff className="h-4 w-4 text-red-500" />}
+            </div>
+          </div>
+
+          {/* Connection Status Alert */}
+          {!isConnected && (
+            <Alert className="mb-6">
+              <WifiOff className="h-4 w-4" />
+              <AlertDescription>
+                You are currently offline. Notifications will be updated when you reconnect.
+                <Button 
+                  variant="link" 
+                  className="p-0 h-auto font-normal ml-2"
+                  onClick={() => window.location.reload()}
+                >
+                  Retry connection
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Filters and Actions */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-2">
+              <Button
+                variant={filter === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilter('all')}
+              >
+                <Filter className="h-4 w-4 mr-2" />
+                All
+              </Button>
+              <Button
+                variant={filter === 'unread' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilter('unread')}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Unread
+                {wsUnreadCount > 0 && (
+                  <Badge variant="secondary" className="ml-2">
+                    {wsUnreadCount}
+                  </Badge>
+                )}
+              </Button>
+            </div>
+
+            <div className="flex items-center space-x-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -295,7 +366,7 @@ export const Notifications = () => {
                 Refresh
               </Button>
               
-              {unreadCount > 0 && (
+              {wsUnreadCount > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -303,179 +374,99 @@ export const Notifications = () => {
                   disabled={markingAllRead}
                 >
                   <CheckCircle className="h-4 w-4 mr-2" />
-                  {markingAllRead ? 'Marking...' : 'Mark All Read'}
+                  Mark All Read
                 </Button>
               )}
             </div>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <Card className="card-elegant">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-100">
-                    <Bell className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{pagination.totalItems}</p>
-                    <p className="text-sm text-muted-foreground">Total Notifications</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="card-elegant">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-orange-100">
-                    <BellRing className="h-5 w-5 text-orange-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{unreadCount}</p>
-                    <p className="text-sm text-muted-foreground">Unread</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="card-elegant">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-green-100">
-                    <Clock className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Last Updated</p>
-                    <p className="font-medium text-sm">{formatDate(lastPolled.toISOString())}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Filters */}
-          <div className="flex items-center gap-4 mb-6">
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Filter:</span>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant={filter === 'all' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilter('all')}
-              >
-                All
-              </Button>
-              <Button
-                variant={filter === 'unread' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setFilter('unread')}
-              >
-                Unread ({unreadCount})
-              </Button>
-            </div>
-          </div>
-
-          {/* Error */}
-          {error && (
-            <Alert variant="destructive" className="mb-6">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
           {/* Notifications List */}
           {loading ? (
             <LoadingSkeleton />
-          ) : notifications.length === 0 ? (
-            <Card className="card-elegant">
-              <CardContent className="p-8 text-center">
-                <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Notifications</h3>
-                <p className="text-muted-foreground mb-4">
+          ) : error ? (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          ) : filteredNotifications.length === 0 ? (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <Bell className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                <h3 className="text-lg font-semibold mb-2">No notifications</h3>
+                <p className="text-muted-foreground">
                   {filter === 'unread' 
-                    ? "You have no unread notifications."
-                    : "You don't have any notifications yet."
+                    ? 'You have no unread notifications'
+                    : 'You have no notifications yet'
                   }
                 </p>
-                {filter === 'unread' && (
-                  <Button onClick={() => setFilter('all')} variant="outline">
-                    View All Notifications
-                  </Button>
-                )}
               </CardContent>
             </Card>
           ) : (
             <div className="space-y-4">
-              {notifications.map((notification) => {
+              {filteredNotifications.map((notification) => {
                 const link = getNotificationLink(notification);
+                
                 const NotificationContent = (
-                  <Card 
-                    className={`card-elegant transition-all duration-200 ${
-                      !notification.isRead ? 'border-primary/20 bg-primary/5' : ''
-                    } ${link ? 'hover:shadow-md cursor-pointer' : ''}`}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex gap-3">
+                  <Card className={`hover:shadow-md transition-shadow ${
+                    !notification.isRead ? 'border-l-4 border-l-blue-500 bg-blue-50/50' : ''
+                  }`}>
+                    <CardContent className="p-6">
+                      <div className="flex items-start space-x-4">
+                        {/* Priority indicator */}
+                        <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${getPriorityColor(notification.priority).replace('bg-', 'text-').replace('-500', '')}`} />
+                        
+                        {/* Icon */}
                         <div className="flex-shrink-0">
-                          <div className={`p-2 rounded-full ${!notification.isRead ? 'bg-primary/10' : 'bg-muted'}`}>
-                            {getNotificationIcon(notification.type)}
-                          </div>
+                          {getNotificationIcon(notification.type)}
                         </div>
                         
-                        <div className="flex-1 space-y-2">
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between">
-                            <h4 className={`font-medium ${!notification.isRead ? 'text-primary' : ''}`}>
-                              {notification.title}
-                            </h4>
-                            <div className="flex items-center gap-2">
-                              {!notification.isRead && (
-                                <Badge className="bg-primary/10 text-primary border-primary/20">
-                                  New
-                                </Badge>
+                            <div className="flex-1">
+                              <h3 className={`font-semibold text-lg ${
+                                !notification.isRead ? 'text-foreground' : 'text-muted-foreground'
+                              }`}>
+                                {notification.title}
+                              </h3>
+                              <p className="text-muted-foreground mt-1">
+                                {notification.message}
+                              </p>
+                              
+                              {/* Metadata */}
+                              {notification.metadata && (
+                                <div className="mt-2 text-sm text-muted-foreground">
+                                  {notification.metadata.hearingDate && (
+                                    <div className="flex items-center space-x-1">
+                                      <Calendar className="h-3 w-3" />
+                                      <span>Hearing: {new Date(notification.metadata.hearingDate).toLocaleDateString()}</span>
+                                    </div>
+                                  )}
+                                  {notification.metadata.caseNumber && (
+                                    <div className="flex items-center space-x-1">
+                                      <Scale className="h-3 w-3" />
+                                      <span>Case: {notification.metadata.caseNumber}</span>
+                                    </div>
+                                  )}
+                                </div>
                               )}
-                              <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                {formatDate(notification.createdAt)}
-                              </span>
+                              
+                              <div className="flex items-center space-x-2 mt-3 text-sm text-muted-foreground">
+                                <Clock className="h-3 w-3" />
+                                <span>{formatDate(notification.createdAt)}</span>
+                                
+                                <Badge 
+                                  variant="outline" 
+                                  className={`text-xs ${getPriorityColor(notification.priority).replace('bg-', 'text-').replace('-500', '')}`}
+                                >
+                                  {notification.priority}
+                                </Badge>
+                              </div>
                             </div>
                           </div>
                           
-                          <p className="text-sm text-muted-foreground">
-                            {notification.message}
-                          </p>
-                          
-                          {/* Related Information */}
-                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            {notification.caseId && (
-                              <span className="flex items-center gap-1">
-                                <Scale className="h-3 w-3" />
-                                Case: {notification.caseId.caseNumber}
-                              </span>
-                            )}
-                            {notification.complaintId && (
-                              <span className="flex items-center gap-1">
-                                <FileText className="h-3 w-3" />
-                                Complaint: {notification.complaintId.title}
-                              </span>
-                            )}
-                            {notification.firId && (
-                              <span className="flex items-center gap-1">
-                                <FileText className="h-3 w-3" />
-                                FIR: {notification.firId.firNumber}
-                              </span>
-                            )}
-                            {notification.metadata?.hearingDate && (
-                              <span className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                {new Date(notification.metadata.hearingDate).toLocaleDateString()}
-                              </span>
-                            )}
-                          </div>
-                          
                           {/* Actions */}
-                          <div className="flex items-center gap-2 pt-2">
+                          <div className="flex items-center space-x-2 mt-4">
                             {!notification.isRead && (
                               <Button
                                 variant="ghost"

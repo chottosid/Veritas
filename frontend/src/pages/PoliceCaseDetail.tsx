@@ -127,13 +127,14 @@ export const PoliceCaseDetail = () => {
     try {
       setSubmittingEvidence(true);
       const formData = new FormData();
+      formData.append('documentType', 'EVIDENCE');
       formData.append('description', evidenceDescription);
       
       Array.from(evidenceFiles).forEach(file => {
-        formData.append('evidence', file);
+        formData.append('documents', file);
       });
 
-      const response = await api.post(`/police/cases/${caseId}/evidence`, formData, {
+      const response = await api.post(`/police/cases/${caseId}/documents`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -142,7 +143,7 @@ export const PoliceCaseDetail = () => {
       if (response.data.success) {
         toast({
           title: "Success",
-          description: "Evidence submitted successfully",
+          description: "Documents submitted successfully",
         });
         setShowEvidenceForm(false);
         setEvidenceDescription("");
@@ -150,10 +151,10 @@ export const PoliceCaseDetail = () => {
         fetchCaseDetail(); // Refresh data
       }
     } catch (err: any) {
-      console.error('Error submitting evidence:', err);
+      console.error('Error submitting documents:', err);
       toast({
         title: "Error",
-        description: err.response?.data?.message || 'Failed to submit evidence',
+        description: err.response?.data?.message || 'Failed to submit documents',
         variant: "destructive"
       });
     } finally {

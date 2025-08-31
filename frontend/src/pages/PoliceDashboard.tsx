@@ -58,8 +58,10 @@ export const PoliceDashboard = () => {
       setLoading(true);
       setError(null);
 
+      const complaintsEndpoint = user?.isOC ? '/police/oc/complaints' : '/police/complaints';
+      
       const [complaintsRes, casesRes, notificationsRes] = await Promise.all([
-        api.get('/police/complaints').catch(() => ({ data: { data: [] } })),
+        api.get(complaintsEndpoint).catch(() => ({ data: { data: [] } })),
         api.get('/police/cases').catch(() => ({ data: { data: [] } })),
         api.get('/police/notifications?limit=5').catch(() => ({ data: { data: [] } }))
       ]);
@@ -73,7 +75,7 @@ export const PoliceDashboard = () => {
         ...complaints.slice(0, 3).map((complaint: any) => ({
           id: complaint._id,
           type: 'complaint',
-          title: 'Complaint Assignment',
+          title: user?.isOC ? 'Pending Complaint' : 'Complaint Assignment',
           description: complaint.title,
           time: formatTimeAgo(complaint.createdAt),
           status: complaint.status
@@ -105,12 +107,11 @@ export const PoliceDashboard = () => {
       console.error('Error fetching dashboard data:', err);
       setError('Failed to load dashboard data');
       
-      // Use mock data for demo
       setStats({
-        complaints: Math.floor(Math.random() * 10) + 1,
-        cases: Math.floor(Math.random() * 5) + 1,
-        notifications: Math.floor(Math.random() * 8) + 1,
-        recentActivity: generateMockActivity()
+        complaints: 0,
+        cases: 0,
+        notifications: 0,
+        recentActivity: []
       });
     } finally {
       setLoading(false);
@@ -464,11 +465,11 @@ export const PoliceDashboard = () => {
               <CardContent>
                 <div className="grid grid-cols-1 gap-3">
                   <Button asChild className="justify-start h-auto p-4">
-                    <Link to="/police/complaints">
+                    <Link to={user?.isOC ? "/police/oc/complaints" : "/police/complaints"}>
                       <FileText className="h-5 w-5 mr-3" />
                       <div className="text-left">
-                        <div className="font-medium">View Complaints</div>
-                        <div className="text-sm opacity-70">Manage assigned complaints</div>
+                        <div className="font-medium">{user?.isOC ? "Pending Complaints" : "View Complaints"}</div>
+                        <div className="text-sm opacity-70">{user?.isOC ? "Assign officers to complaints" : "Manage assigned complaints"}</div>
                       </div>
                     </Link>
                   </Button>

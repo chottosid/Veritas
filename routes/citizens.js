@@ -28,10 +28,10 @@ const upload = multer({
   },
 });
 
-// Citizen Registration
+// Citizen Registration with 2FA
 router.post("/register", async (req, res) => {
   try {
-    const { name, address, dateOfBirth, phone, email, nid, password } =
+    const { name, address, dateOfBirth, phone, email, nid, password, otp } =
       req.body;
 
     // Check if citizen already exists
@@ -43,6 +43,14 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Citizen already exists with this NID, phone, or email",
+      });
+    }
+
+    // OTP verification for citizen registration
+    if (otp !== "661233") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP. Please use the correct verification code.",
       });
     }
 
@@ -261,7 +269,7 @@ router.post(
   async (req, res) => {
     try {
       const complainantId = req.user.id; // Get from JWT token
-      const { title, description, area } = req.body;
+      const { title, description, area, accused } = req.body;
 
       // Verify citizen exists
       const citizen = await Citizen.findById(complainantId);
@@ -293,12 +301,39 @@ router.post(
         }
       }
 
+      // Process accused information if provided
+      let accusedData = [];
+      if (accused && accused.trim()) {
+        try {
+          const accusedArray = JSON.parse(accused);
+          if (Array.isArray(accusedArray) && accusedArray.length > 0) {
+            accusedData = accusedArray.map((acc) => ({
+              name: acc.name || "",
+              address: acc.address || "",
+              phone: acc.phone || "",
+              email: acc.email || "",
+              nid: acc.nid || "",
+              age: acc.age || null,
+              gender: acc.gender || null,
+              occupation: acc.occupation || "",
+              relationshipToComplainant: acc.relationshipToComplainant || "",
+              addedBy: "CITIZEN",
+              addedById: complainantId,
+            }));
+          }
+        } catch (error) {
+          console.error("Error parsing accused data:", error);
+          // Continue without accused data if parsing fails
+        }
+      }
+
       // Create complaint
       const complaint = new Complaint({
         complainantId,
         title,
         description,
         area,
+        accused: accusedData,
         attachments,
         status: "PENDING",
       });
@@ -368,6 +403,77 @@ router.get("/complaints/:complaintId", authenticateToken, async (req, res) => {
     });
   }
 });
+
+// Update accused information for a complaint
+router.put(
+  "/complaints/:complaintId/accused",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { complaintId } = req.params;
+      const citizenId = req.user.id;
+      const { accused } = req.body;
+
+      // Verify complaint exists and belongs to the citizen
+      const complaint = await Complaint.findOne({
+        _id: complaintId,
+        complainantId: citizenId,
+      });
+
+      if (!complaint) {
+        return res.status(404).json({
+          success: false,
+          message: "Complaint not found or access denied",
+        });
+      }
+
+      // Only allow updates if complaint is still pending
+      if (complaint.status !== "PENDING") {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Cannot update accused information after complaint has been processed",
+        });
+      }
+
+      // Process accused information
+      let accusedData = [];
+      if (accused) {
+        try {
+          const accusedArray = Array.isArray(accused) ? accused : [accused];
+          accusedData = accusedArray.map((acc) => ({
+            ...acc,
+            addedBy: "CITIZEN",
+            addedById: citizenId,
+          }));
+        } catch (error) {
+          console.error("Error parsing accused data:", error);
+          return res.status(400).json({
+            success: false,
+            message: "Invalid accused data format",
+          });
+        }
+      }
+
+      // Update complaint with new accused information
+      complaint.accused = accusedData;
+      await complaint.save();
+
+      res.json({
+        success: true,
+        message: "Accused information updated successfully",
+        data: complaint,
+      });
+    } catch (error) {
+      console.error("Update accused error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update accused information",
+        error: error.message,
+      });
+    }
+  }
+);
 
 // =============== LAWYER REQUEST SYSTEM ===============
 
@@ -502,6 +608,49 @@ router.get("/lawyer-requests", authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to get lawyer requests",
+      error: error.message,
+    });
+  }
+});
+
+// Get case details (citizen view)
+router.get("/cases/:caseId", authenticateToken, async (req, res) => {
+  try {
+    const { caseId } = req.params;
+    const citizenId = req.user.id;
+
+    // Ensure citizen is the complainant of the FIR's complaint
+    const caseData = await Case.findById(caseId)
+      .populate({
+        path: "firId",
+        populate: {
+          path: "complaintId",
+          populate: { path: "complainantId", select: "_id name nid phone" },
+        },
+      })
+      .populate("assignedJudgeId", "name courtName")
+      .populate("accusedLawyerId", "name firmName")
+      .populate("prosecutorLawyerId", "name firmName")
+      .populate("investigatingOfficerIds", "name rank station");
+
+    if (!caseData) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Case not found" });
+    }
+
+    const complainantId =
+      caseData.firId?.complaintId?.complainantId?._id?.toString();
+    if (complainantId !== citizenId) {
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
+
+    res.json({ success: true, data: caseData });
+  } catch (error) {
+    console.error("Get case details error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get case details",
       error: error.message,
     });
   }

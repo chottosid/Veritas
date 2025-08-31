@@ -56,6 +56,11 @@ export const API_CONFIG = {
     POLICE_NOTIFICATIONS: '/police/notifications',
     JUDGES_NOTIFICATIONS: '/judges/notifications',
     LAWYERS_NOTIFICATIONS: '/lawyers/notifications',
+    
+    // OTP endpoints
+    OTP_SEND: '/otp/send',
+    OTP_VERIFY: '/otp/verify',
+    OTP_RESEND: '/otp/resend',
   }
 } as const;
 

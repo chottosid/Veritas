@@ -12,8 +12,10 @@ import {
   CaseProceeding,
 } from "../models/index.js";
 import { authenticateToken } from "../middleware/auth.js";
-import { uploadToIPFS, appendCaseProceeding } from "../utils/ipfs.js";
+import { uploadToIPFS } from "../utils/ipfs.js";
+import { appendCaseProceeding } from "../utils/caseProceedings.js";
 import { emitFIRRegistered, emitCaseUpdated } from "../utils/blockchain.js";
+import NotificationService from "../utils/notifications.js";
 
 const router = express.Router();
 
@@ -255,7 +257,10 @@ router.get("/complaints/:complaintId", authenticateToken, async (req, res) => {
     }
 
     // Check if FIR already exists for this complaint
-    const existingFir = await FIR.findOne({ complaintId }).populate("submittedToJudge", "name courtName");
+    const existingFir = await FIR.findOne({ complaintId }).populate(
+      "submittedToJudge",
+      "name courtName"
+    );
 
     res.json({
       success: true,
@@ -275,6 +280,69 @@ router.get("/complaints/:complaintId", authenticateToken, async (req, res) => {
   }
 });
 
+// Update accused information in FIR
+router.put("/fir/:firId/accused", authenticateToken, async (req, res) => {
+  try {
+    const { firId } = req.params;
+    const policeId = req.user.id;
+    const { accused } = req.body;
+
+    // Verify FIR exists and is registered by this officer
+    const fir = await FIR.findOne({
+      _id: firId,
+      registeredBy: policeId,
+    });
+
+    if (!fir) {
+      return res.status(404).json({
+        success: false,
+        message: "FIR not found or not registered by you",
+      });
+    }
+
+    // Process accused information
+    let accusedData = [];
+    if (accused) {
+      try {
+        const accusedArray = Array.isArray(accused) ? accused : [accused];
+        accusedData = accusedArray.map((acc) => ({
+          ...acc,
+          addedBy: "POLICE",
+          addedById: policeId,
+        }));
+      } catch (error) {
+        console.error("Error parsing accused data:", error);
+        return res.status(400).json({
+          success: false,
+          message: "Invalid accused data format",
+        });
+      }
+    }
+
+    // Update FIR with new accused information
+    fir.accused = accusedData;
+    await fir.save();
+
+    // Populate the response
+    await fir.populate("registeredBy", "name pid rank station");
+    await fir.populate("submittedToJudge", "name courtName");
+    await fir.populate("complaintId", "title description area");
+
+    res.json({
+      success: true,
+      message: "Accused information updated successfully",
+      data: fir,
+    });
+  } catch (error) {
+    console.error("Update FIR accused error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update accused information",
+      error: error.message,
+    });
+  }
+});
+
 // Convert complaint to FIR
 router.post(
   "/complaints/:complaintId/fir",
@@ -284,7 +352,7 @@ router.post(
     try {
       const { complaintId } = req.params;
       const policeId = req.user.id;
-      const { firNumber, sections, judgeId } = req.body;
+      const { firNumber, sections, judgeId, accused } = req.body;
 
       // Verify complaint exists and is assigned to this officer
       const complaint = await Complaint.findOne({
@@ -321,6 +389,13 @@ router.post(
 
       // Process attachments if any
       const attachments = [];
+
+      // First, include all attachments from the original complaint
+      if (complaint.attachments && complaint.attachments.length > 0) {
+        attachments.push(...complaint.attachments);
+      }
+
+      // Then add new attachments from the FIR registration
       if (req.files && req.files.length > 0) {
         for (const file of req.files) {
           const uploadResult = await uploadToIPFS(
@@ -339,13 +414,65 @@ router.post(
         }
       }
 
+      // Process accused information - combine complaint accused with police added accused
+      let accusedData = [...(complaint.accused || [])];
+      if (accused) {
+        try {
+          // Parse accused - handle both JSON string and array
+          let parsedAccused = [];
+          if (typeof accused === "string") {
+            parsedAccused = JSON.parse(accused);
+          } else if (Array.isArray(accused)) {
+            parsedAccused = accused;
+          } else {
+            parsedAccused = [accused];
+          }
+
+          // Clean accused data - remove temporary _id fields and ensure proper structure
+          const policeAccused = parsedAccused.map((acc) => {
+            const cleanAcc = {
+              name: acc.name || "",
+              address: acc.address || "",
+              phone: acc.phone || "",
+              email: acc.email || "",
+              nid: acc.nid || "",
+              age: acc.age || undefined,
+              gender: acc.gender || undefined,
+              occupation: acc.occupation || "",
+              relationshipToComplainant: acc.relationshipToComplainant || "",
+              addedBy: "POLICE",
+              addedById: policeId,
+            };
+            return cleanAcc;
+          });
+          accusedData = [...accusedData, ...policeAccused];
+        } catch (error) {
+          console.error("Error parsing accused data:", error);
+          // Continue without police accused data if parsing fails
+        }
+      }
+
       // Create FIR
       const fir = new FIR({
         complaintId,
         firNumber,
-        sections: Array.isArray(sections) ? sections : [sections],
+        sections: (() => {
+          try {
+            if (typeof sections === "string") {
+              return JSON.parse(sections);
+            } else if (Array.isArray(sections)) {
+              return sections;
+            } else {
+              return [sections];
+            }
+          } catch (error) {
+            console.error("Error parsing sections:", error);
+            return [sections]; // Fallback to single item array
+          }
+        })(),
         registeredBy: policeId,
         submittedToJudge: judgeId || null,
+        accused: accusedData,
         attachments,
       });
 
@@ -354,6 +481,17 @@ router.post(
       // Update complaint status
       complaint.status = "FIR_REGISTERED";
       await complaint.save();
+
+      // Create notifications for FIR registration
+      await NotificationService.notifyFIRRegistration(Notification, {
+        firId: fir._id,
+        firNumber: fir.firNumber,
+        complaintId: complaint._id,
+        complainantId: complaint.complainantId,
+        registeredBy: policeId,
+        assignedJudgeId: judgeId,
+        excludeRecipients: [policeId], // Don't notify the registering officer
+      });
 
       // Populate the response
       await fir.populate("registeredBy", "name pid rank station");
@@ -493,6 +631,15 @@ router.post(
       complaint.status = "UNDER_INVESTIGATION";
       await complaint.save();
 
+      // Create notifications for assignment
+      await NotificationService.notifyComplaintSubmission(Notification, {
+        complaintId: complaint._id,
+        title: complaint.title,
+        complainantId: complaint.complainantId,
+        assignedOfficerId: officerId,
+        excludeRecipients: [],
+      });
+
       // Populate the response
       await complaint.populate("complainantId", "name nid phone");
       await complaint.populate("assignedOfficerIds", "name rank station");
@@ -568,10 +715,10 @@ router.get("/oc/cases", authenticateToken, async (req, res) => {
       isOC: false,
     }).select("_id");
 
-    const officerIds = stationOfficers.map(officer => officer._id);
+    const officerIds = stationOfficers.map((officer) => officer._id);
 
     const cases = await Case.find({
-      investigatingOfficerIds: { $in: officerIds }
+      investigatingOfficerIds: { $in: officerIds },
     })
       .populate({
         path: "firId",
@@ -579,9 +726,9 @@ router.get("/oc/cases", authenticateToken, async (req, res) => {
           path: "complaintId",
           populate: {
             path: "complainantId",
-            select: "name nid phone"
-          }
-        }
+            select: "name nid phone",
+          },
+        },
       })
       .populate("assignedJudgeId", "name courtName")
       .populate("accusedLawyerId", "name firmName")
@@ -807,6 +954,15 @@ router.post(
         })),
       });
 
+      // Notify all parties about evidence submission
+      const { notifyCaseParties } = await import("../utils/notifications.js");
+      await notifyCaseParties(Notification, {
+        caseId: caseData._id,
+        title: "Evidence Submitted",
+        message: `New evidence has been submitted for case ${caseData.caseNumber}`,
+        recipientTypes: ["JUDGE", "LAWYER"],
+      });
+
       // Emit chain event (non-blocking)
       emitCaseUpdated({
         caseId: caseData._id,
@@ -827,6 +983,97 @@ router.post(
       res.status(500).json({
         success: false,
         message: "Failed to submit evidence",
+        error: error.message,
+      });
+    }
+  }
+);
+
+// Submit documents for case (police)
+router.post(
+  "/cases/:caseId/documents",
+  authenticateToken,
+  upload.array("documents", 5),
+  async (req, res) => {
+    try {
+      const { caseId } = req.params;
+      const policeId = req.user.id;
+      const { documentType, description } = req.body;
+
+      // Verify case exists and officer is assigned
+      const caseData = await Case.findOne({
+        _id: caseId,
+        investigatingOfficerIds: policeId,
+      });
+
+      if (!caseData) {
+        return res.status(404).json({
+          success: false,
+          message: "Case not found or not assigned to you",
+        });
+      }
+
+      // Process document uploads
+      const documents = [];
+      if (req.files && req.files.length > 0) {
+        for (const file of req.files) {
+          const uploadResult = await uploadToIPFS(
+            file.buffer,
+            file.originalname
+          );
+          if (uploadResult.success) {
+            documents.push({
+              fileName: file.originalname,
+              ipfsHash: uploadResult.ipfsHash,
+              fileSize: file.size,
+              documentType: documentType || "GENERAL",
+              description: description || "",
+              uploadedBy: policeId,
+              uploadedAt: new Date(),
+            });
+          } else {
+            console.error("Failed to upload file to IPFS:", uploadResult.error);
+          }
+        }
+      }
+
+      // Append proceeding: DOCUMENT_FILED
+      await appendCaseProceeding(CaseProceeding, {
+        caseId: caseData._id,
+        type: "DOCUMENT_FILED",
+        createdByRole: "POLICE",
+        createdById: policeId,
+        description: description || "Document(s) submitted",
+        attachments: documents.map((d) => ({
+          fileName: d.fileName,
+          ipfsHash: d.ipfsHash,
+          fileSize: d.fileSize,
+        })),
+        metadata: { documentType: documentType || "GENERAL" },
+      });
+
+      // Notify all parties about document submission
+      const { notifyCaseParties } = await import("../utils/notifications.js");
+      await notifyCaseParties(Notification, {
+        caseId: caseData._id,
+        title: "Document Submitted",
+        message: `New document has been submitted for case ${caseData.caseNumber}`,
+        recipientTypes: ["JUDGE", "LAWYER"],
+      });
+
+      res.json({
+        success: true,
+        message: "Documents submitted successfully",
+        data: {
+          caseId,
+          documents,
+        },
+      });
+    } catch (error) {
+      console.error("Submit documents error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to submit documents",
         error: error.message,
       });
     }

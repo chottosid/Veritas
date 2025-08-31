@@ -48,7 +48,8 @@ import {
 } from '../components/ui/select';
 
 interface LawyerRequest {
-  id: string;
+  _id: string;
+  id?: string; // For backward compatibility
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
   citizenId: {
     name: string;
@@ -152,7 +153,7 @@ const LawyerRequests: React.FC = () => {
         // Update the request in the local state
         setRequests(prev => 
           prev.map(request => 
-            request.id === requestId 
+            request._id === requestId 
               ? { ...request, status }
               : request
           )
@@ -161,8 +162,8 @@ const LawyerRequests: React.FC = () => {
         toast({
           title: status === 'ACCEPTED' ? "Request Accepted" : "Request Rejected",
           description: status === 'ACCEPTED' 
-            ? `You have agreed to represent ${requests.find(r => r.id === requestId)?.citizenId.name} in case ${requests.find(r => r.id === requestId)?.caseId.caseNumber}. The client will be notified.`
-            : `You have declined the request from ${requests.find(r => r.id === requestId)?.citizenId.name}. The client will be notified.`,
+            ? `You have agreed to represent ${requests.find(r => r._id === requestId)?.citizenId.name} in case ${requests.find(r => r._id === requestId)?.caseId.caseNumber}. The client will be notified.`
+            : `You have declined the request from ${requests.find(r => r._id === requestId)?.citizenId.name}. The client will be notified.`,
         });
       } else {
         throw new Error(`Failed to ${status.toLowerCase()} request`);
@@ -329,7 +330,7 @@ const LawyerRequests: React.FC = () => {
             <div className="space-y-4">
               {filteredRequests.length > 0 ? (
                 filteredRequests.map((request) => (
-                  <div key={request.id} className="border rounded-lg p-6">
+                  <div key={request._id} className="border rounded-lg p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1 space-y-3">
                         <div className="flex items-center gap-3">
@@ -431,7 +432,7 @@ const LawyerRequests: React.FC = () => {
                               <AlertDialogTrigger asChild>
                                 <Button
                                   size="sm"
-                                  disabled={actionLoading === request.id}
+                                  disabled={actionLoading === request._id}
                                   className="gap-2"
                                 >
                                   <Check className="h-4 w-4" />
@@ -449,11 +450,11 @@ const LawyerRequests: React.FC = () => {
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                                   <AlertDialogAction
-                                    onClick={() => handleRequestAction(request.id, 'ACCEPTED')}
-                                    disabled={actionLoading === request.id}
+                                    onClick={() => handleRequestAction(request._id, 'ACCEPTED')}
+                                    disabled={actionLoading === request._id}
                                     className="bg-green-600 hover:bg-green-700"
                                   >
-                                    {actionLoading === request.id ? 'Accepting...' : 'Accept Request'}
+                                    {actionLoading === request._id ? 'Accepting...' : 'Accept Request'}
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
@@ -464,7 +465,7 @@ const LawyerRequests: React.FC = () => {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  disabled={actionLoading === request.id}
+                                  disabled={actionLoading === request._id}
                                   className="gap-2 hover:bg-red-50 hover:text-red-700 hover:border-red-200"
                                 >
                                   <X className="h-4 w-4" />
@@ -482,11 +483,11 @@ const LawyerRequests: React.FC = () => {
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                                   <AlertDialogAction
-                                    onClick={() => handleRequestAction(request.id, 'REJECTED')}
-                                    disabled={actionLoading === request.id}
+                                    onClick={() => handleRequestAction(request._id, 'REJECTED')}
+                                    disabled={actionLoading === request._id}
                                     className="bg-red-600 hover:bg-red-700"
                                   >
-                                    {actionLoading === request.id ? 'Rejecting...' : 'Reject Request'}
+                                    {actionLoading === request._id ? 'Rejecting...' : 'Reject Request'}
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>

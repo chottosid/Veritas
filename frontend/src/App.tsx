@@ -32,6 +32,7 @@ import { JudgeCases } from "./pages/JudgeCases";
 import LawyerDashboard from "./pages/LawyerDashboard";
 import LawyerRequests from "./pages/LawyerRequests";
 import LawyerCases from "./pages/LawyerCases";
+import BlockchainTransparency from "./pages/BlockchainTransparency";
 
 const queryClient = new QueryClient();
 
@@ -134,6 +135,12 @@ const App = () => (
             } 
           />
 
+          {/* Blockchain Transparency Route */}
+          <Route 
+            path="/blockchain" 
+            element={<BlockchainTransparency />} 
+          />
+
           {/* Police Routes */}
           <Route 
             path="/police/dashboard" 
@@ -224,6 +231,14 @@ const App = () => (
             element={
               <ProtectedRoute requiredRole="JUDGE">
                 <JudgeCases />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/case/:caseId" 
+            element={
+              <ProtectedRoute>
+                <CaseDetail />
               </ProtectedRoute>
             } 
           />

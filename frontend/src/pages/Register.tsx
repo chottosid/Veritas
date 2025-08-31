@@ -13,6 +13,7 @@ import { useAuthStore, UserRole } from '@/store/authStore';
 import { useToast } from '@/hooks/use-toast';
 import api from '@/lib/api';
 import { API_CONFIG } from '@/config/api';
+import { OTPVerification } from '@/components/OTPVerification';
 
 const roleConfig = {
   CITIZEN: {
@@ -72,6 +73,8 @@ export const Register = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [showOTPVerification, setShowOTPVerification] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
 
   const config = roleConfig[role];
   const Icon = config.icon;
@@ -80,7 +83,7 @@ export const Register = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent, providedOtp?: string) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
@@ -93,6 +96,13 @@ export const Register = () => {
 
     if (!agreedToTerms) {
       setError('Please agree to the terms and conditions');
+      setIsLoading(false);
+      return;
+    }
+
+    // For citizen registration, show OTP verification first
+    if (role === 'CITIZEN' && !otpCode && !providedOtp) {
+      setShowOTPVerification(true);
       setIsLoading(false);
       return;
     }
@@ -110,6 +120,8 @@ export const Register = () => {
       // Add role-specific fields
       if (role === 'CITIZEN') {
         registrationData.nid = formData.nid;
+        const otpToUse = providedOtp || otpCode;
+        registrationData.otp = otpToUse; // Include the actual OTP code
       } else if (role === 'POLICE') {
         registrationData.pid = formData.pid;
         registrationData.rank = formData.rank;
@@ -169,10 +181,30 @@ export const Register = () => {
     }
   };
 
+  const handleOTPVerificationSuccess = (otp: string) => {
+    setOtpCode(otp); // Store the actual OTP code
+    setShowOTPVerification(false);
+    
+    // Continue with registration immediately, passing the OTP directly
+    handleRegister(new Event('submit') as any, otp);
+  };
+
+  const handleOTPBack = () => {
+    setShowOTPVerification(false);
+    setOtpCode('');
+  };
+
   return (
     <Layout showFooter={false}>
       <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-gradient-to-br from-background to-muted/30 p-4">
-        <Card className="w-full max-w-2xl card-elegant">
+        {showOTPVerification ? (
+          <OTPVerification
+            email={formData.email}
+            onVerificationSuccess={handleOTPVerificationSuccess}
+            onBack={handleOTPBack}
+          />
+        ) : (
+          <Card className="w-full max-w-2xl card-elegant">
           <CardHeader className="text-center space-y-4">
             <div className="mx-auto w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
               <Icon className="h-6 w-6 text-primary" />
@@ -473,6 +505,7 @@ export const Register = () => {
             </div>
           </CardContent>
         </Card>
+        )}
       </div>
     </Layout>
   );

@@ -43,7 +43,7 @@ import {
 import { Label } from '../components/ui/label';
 
 interface LawyerCase {
-  id: string;
+  _id: string;
   caseNumber: string;
   status: 'PENDING' | 'ONGOING' | 'CLOSED';
   firId: {
@@ -89,7 +89,7 @@ interface CaseDocument {
 }
 
 interface Proceeding {
-  id: string;
+  _id: string;
   type: string;
   createdByRole: string;
   description: string;
@@ -244,7 +244,7 @@ const LawyerCases: React.FC = () => {
       });
 
       const response = await fetch(
-        buildApiUrl(`${API_CONFIG.ENDPOINTS.LAWYERS_CASES}/${selectedCase.id}/documents`),
+        buildApiUrl(`${API_CONFIG.ENDPOINTS.LAWYERS_CASES}/${selectedCase._id}/documents`),
         {
           method: 'POST',
           headers: {
@@ -280,8 +280,8 @@ const LawyerCases: React.FC = () => {
 
   const handleViewCaseDetails = (case_: LawyerCase) => {
     setSelectedCase(case_);
-    fetchCaseDetails(case_.id);
-    fetchProceedings(case_.id);
+    fetchCaseDetails(case_._id);
+    fetchProceedings(case_._id);
   };
 
   const getStatusBadge = (status: string) => {
@@ -440,7 +440,7 @@ const LawyerCases: React.FC = () => {
             <div className="space-y-4">
               {filteredCases.length > 0 ? (
                 filteredCases.map((case_) => (
-                  <div key={case_.id} className="border rounded-lg p-6">
+                  <div key={case_._id} className="border rounded-lg p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1 space-y-3">
                         <div className="flex items-center gap-3">
