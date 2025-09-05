@@ -1,4 +1,4 @@
-# Justice Nexus Chain
+# Full Stop Justice
 
 **Our submission for Bangladesh Blockchain Olympiad 2025**
 
@@ -6,7 +6,7 @@ This is our complete blockchain-based justice management system that we've built
 
 ## What We Built
 
-Justice Nexus Chain is a comprehensive platform that connects citizens, police officers, judges, and lawyers in a transparent, blockchain-powered ecosystem. Think of it as a digital bridge between traditional justice systems and modern technology.
+Full Stop is a comprehensive platform that connects citizens, police officers, judges, and lawyers in a transparent, blockchain-powered ecosystem. Think of it as a digital bridge between traditional justice systems and modern technology.
 
 **Key Features:**
 - Citizens can file complaints with blockchain verification
@@ -25,7 +25,7 @@ We've built this as a full-stack application with:
 - **Blockchain**: Ethereum-based smart contracts for immutable records
 - **File Storage**: IPFS for decentralized document storage
 
-The system uses JWT authentication, WebSocket for real-time updates, and integrates with Celo Sepolia testnet for blockchain functionality.
+The system uses JWT authentication, WebSocket for real-time updates, and integrates with Celo Sepolia and Polygon testnet for blockchain functionality.
 
 ## Quick Setup
 
