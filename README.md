@@ -1,5 +1,9 @@
 # Full Stop Justice
 
+<div align="center">
+  <img src="frontend/src/assets/logo.png" alt="Full Stop Justice Logo" width="200" height="200">
+</div>
+
 **Our submission for Bangladesh Blockchain Olympiad 2025**
 
 This is our complete blockchain-based justice management system that we've built for the competition. It's designed to bring transparency and efficiency to the judicial process using smart contracts and modern web technologies.
