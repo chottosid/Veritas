@@ -201,6 +201,22 @@ const caseSchema = new Schema(
     verdict: { type: String },
     investigatingOfficerIds: [{ type: Schema.Types.ObjectId, ref: "Police" }],
     ipfsHash: { type: String }, // IPFS hash for case documents
+    // Add accused information to maintain data integrity
+    accused: { type: [accusedSchema], default: [] },
+    // Add attachments to maintain evidence chain
+    attachments: [
+      {
+        fileName: String,
+        ipfsHash: String,
+        fileSize: Number,
+        uploadedAt: { type: Date, default: Date.now },
+        source: { 
+          type: String, 
+          enum: ["COMPLAINT", "FIR", "CASE"], 
+          default: "CASE" 
+        }, // Track where the evidence came from
+      },
+    ],
   },
   {
     timestamps: true,

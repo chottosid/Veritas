@@ -16,6 +16,7 @@ import { uploadToIPFS } from "../utils/ipfs.js";
 import { appendCaseProceeding } from "../utils/caseProceedings.js";
 import { emitFIRRegistered, emitCaseUpdated } from "../utils/blockchain.js";
 import NotificationService from "../utils/notifications.js";
+// import { validateComplaintToFIRTransfer, generateDataTransferReport } from "../utils/dataIntegrity.js";
 
 const router = express.Router();
 
@@ -280,6 +281,95 @@ router.get("/complaints/:complaintId", authenticateToken, async (req, res) => {
   }
 });
 
+// Update accused information in complaint (for investigating officers)
+router.put("/complaints/:complaintId/accused", authenticateToken, async (req, res) => {
+  try {
+    const { complaintId } = req.params;
+    const policeId = req.user.id;
+    const { accused } = req.body;
+
+    // Verify complaint exists and is assigned to this officer
+    const complaint = await Complaint.findOne({
+      _id: complaintId,
+      assignedOfficerIds: policeId,
+    });
+
+    if (!complaint) {
+      return res.status(404).json({
+        success: false,
+        message: "Complaint not found or not assigned to you",
+      });
+    }
+
+    // Only allow updates if complaint is still under investigation
+    if (complaint.status === "CLOSED") {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot update accused information for closed complaints",
+      });
+    }
+
+    // Process accused information
+    let accusedData = [];
+    if (accused) {
+      try {
+        const accusedArray = Array.isArray(accused) ? accused : [accused];
+        accusedData = accusedArray.map((acc) => {
+          // Clean the accused data - remove invalid _id fields and ensure proper structure
+          const cleanAcc = {
+            name: acc.name || "",
+            address: acc.address || "",
+            phone: acc.phone || "",
+            email: acc.email || "",
+            nid: acc.nid || "",
+            age: acc.age || undefined,
+            gender: acc.gender || undefined,
+            occupation: acc.occupation || "",
+            relationshipToComplainant: acc.relationshipToComplainant || "",
+            addedBy: "POLICE",
+            addedById: policeId,
+          };
+          
+          // Only include _id if it's a valid MongoDB ObjectId (24 character hex string)
+          // Exclude temporary IDs that start with 'temp_'
+          if (acc._id && typeof acc._id === 'string' && acc._id.length === 24 && /^[0-9a-fA-F]{24}$/.test(acc._id) && !acc._id.startsWith('temp_')) {
+            cleanAcc._id = acc._id;
+          }
+          
+          return cleanAcc;
+        });
+      } catch (error) {
+        console.error("Error parsing accused data:", error);
+        return res.status(400).json({
+          success: false,
+          message: "Invalid accused data format",
+        });
+      }
+    }
+
+    // Update complaint with new accused information
+    complaint.accused = accusedData;
+    await complaint.save();
+
+    // Populate the response
+    await complaint.populate("complainantId", "name nid phone email");
+    await complaint.populate("assignedOfficerIds", "name rank station");
+
+    res.json({
+      success: true,
+      message: "Accused information updated successfully",
+      data: complaint,
+    });
+  } catch (error) {
+    console.error("Update complaint accused error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update accused information",
+      error: error.message,
+    });
+  }
+});
+
 // Update accused information in FIR
 router.put("/fir/:firId/accused", authenticateToken, async (req, res) => {
   try {
@@ -414,6 +504,13 @@ router.post(
         }
       }
 
+      // Validate data transfer integrity
+      // const validation = validateComplaintToFIRTransfer(complaint, { firNumber, sections });
+      // if (!validation.isValid) {
+      //   console.warn("Data transfer validation issues:", validation.issues);
+      //   // Log warnings but continue with FIR creation
+      // }
+
       // Process accused information - combine complaint accused with police added accused
       let accusedData = [...(complaint.accused || [])];
       if (accused) {
@@ -477,6 +574,10 @@ router.post(
       });
 
       await fir.save();
+
+      // Generate data transfer report for audit trail
+      // const transferReport = generateDataTransferReport(complaint, fir, "COMPLAINT_TO_FIR");
+      // console.log("Data transfer report:", transferReport);
 
       // Update complaint status
       complaint.status = "FIR_REGISTERED";

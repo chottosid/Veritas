@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"No tests\" && exit 0",
     "compile": "hardhat compile",
-    "deploy:amoy": "hardhat run scripts/deploy.js --network amoy"
+    "deploy:celo-sepolia": "hardhat run scripts/deploy.js --network celo-sepolia"
   },
   "keywords": [],
   "author": "",

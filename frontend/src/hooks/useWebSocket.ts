@@ -81,10 +81,30 @@ export const useWebSocket = (): UseWebSocketReturn => {
       console.error('WebSocket connection error:', error);
       setIsConnected(false);
       
+      // Handle different types of connection errors
+      let errorMessage = "Failed to connect to notification service. Some features may not work.";
+      
+      if (error.message?.includes('Token expired')) {
+        errorMessage = "Your session has expired. Please log in again to receive notifications.";
+        // Clear auth data and redirect to login
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('auth-storage');
+        window.location.href = '/login';
+        return;
+      } else if (error.message?.includes('Invalid token')) {
+        errorMessage = "Authentication failed. Please log in again.";
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('auth-storage');
+        window.location.href = '/login';
+        return;
+      }
+      
       // Show error toast
       toast({
         title: "Connection Error",
-        description: "Failed to connect to notification service. Some features may not work.",
+        description: errorMessage,
         variant: "destructive"
       });
     });

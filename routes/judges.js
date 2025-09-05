@@ -16,6 +16,7 @@ import { appendCaseProceeding } from "../utils/caseProceedings.js";
 import { notifyCaseParties } from "../utils/notifications.js";
 import { emitCaseCreated, emitCaseUpdated } from "../utils/blockchain.js";
 import NotificationService from "../utils/notifications.js";
+import { validateFIRToCaseTransfer, generateDataTransferReport, validateWorkflowDataIntegrity } from "../utils/dataIntegrity.js";
 
 const router = express.Router();
 
@@ -214,15 +215,22 @@ router.get("/firs", authenticateToken, async (req, res) => {
       submittedToJudge: judgeId,
       status: "PENDING", // Only show FIRs that haven't been converted to cases yet
     })
-      .populate("complaintId", "title description area complainantId")
+      .populate("complaintId", "title description area complainantId accused")
       .populate("registeredBy", "name pid rank station")
       .populate({
         path: "complaintId",
-        populate: {
-          path: "complainantId",
-          select: "name nid phone",
-        },
+        populate: [
+          {
+            path: "complainantId",
+            select: "name nid phone",
+          },
+          {
+            path: "accused",
+            select: "name address phone email nid age gender occupation relationshipToComplainant addedBy addedById",
+          },
+        ],
       })
+      .select("+accused") // Include FIR's own accused persons
       .sort({ createdAt: -1 });
 
     res.json({
@@ -294,16 +302,60 @@ router.post("/firs/:firId/case", authenticateToken, async (req, res) => {
       });
     }
 
-    // Create new case
+    // Validate data transfer integrity
+    const validation = validateFIRToCaseTransfer(fir, { caseNumber });
+    if (!validation.isValid) {
+      console.warn("Data transfer validation issues:", validation.issues);
+      // Log warnings but continue with case creation
+    }
+
+    // Aggregate all accused information from complaint and FIR
+    const complaintAccused = fir.complaintId.accused || [];
+    const firAccused = fir.accused || [];
+    
+    // Combine and deduplicate accused information
+    const allAccused = [...complaintAccused, ...firAccused];
+    const uniqueAccused = allAccused.filter(
+      (accused, index, self) =>
+        index ===
+        self.findIndex(
+          (a) => a.name === accused.name && a.address === accused.address
+        )
+    );
+
+    // Aggregate all evidence/attachments from complaint and FIR
+    const complaintAttachments = (fir.complaintId.attachments || []).map(att => ({
+      ...att,
+      source: "COMPLAINT"
+    }));
+    const firAttachments = (fir.attachments || []).map(att => ({
+      ...att,
+      source: "FIR"
+    }));
+    
+    // Combine and deduplicate attachments by IPFS hash
+    const allAttachments = [...complaintAttachments, ...firAttachments];
+    const uniqueAttachments = allAttachments.filter(
+      (attachment, index, self) =>
+        index === self.findIndex((a) => a.ipfsHash === attachment.ipfsHash)
+    );
+
+    // Create new case with all transferred data
     const newCase = new Case({
       firId: fir._id,
       caseNumber,
       assignedJudgeId: judgeId,
       status: "PENDING",
       investigatingOfficerIds: fir.complaintId.assignedOfficerIds || [],
+      accused: uniqueAccused,
+      attachments: uniqueAttachments,
     });
 
     await newCase.save();
+
+    // Generate data transfer report for audit trail
+    const transferReport = generateDataTransferReport(fir, newCase, "FIR_TO_CASE");
+    console.log("Data transfer report:", transferReport);
 
     // Update FIR status to indicate case has been created
     fir.status = "CASE_CREATED";
@@ -430,16 +482,31 @@ router.get("/cases", authenticateToken, async (req, res) => {
         (req) => req.caseId.toString() === case_._id.toString()
       );
 
-      // Count documents from case proceedings
+      // Count documents using the same logic as case details endpoint
       const caseProceedingDocs = caseProceedings
         .filter((proc) => proc.caseId.toString() === case_._id.toString())
         .reduce((total, proc) => total + (proc.attachments?.length || 0), 0);
 
-      // Count documents from complaint and FIR
-      const complaintDocs = case_.firId.complaintId.attachments?.length || 0;
-      const firDocs = case_.firId.attachments?.length || 0;
-
-      const totalDocuments = caseProceedingDocs + complaintDocs + firDocs;
+      // Get documents from complaint
+      const complaintAttachments = case_.firId.complaintId.attachments || [];
+      
+      // Get documents from FIR
+      const firAttachments = case_.firId.attachments || [];
+      
+      // Combine all documents and deduplicate by IPFS hash (same as case details)
+      const allDocuments = [
+        ...complaintAttachments,
+        ...firAttachments,
+        // Note: Case proceedings documents are already counted in caseProceedingDocs
+      ];
+      
+      const uniqueDocuments = allDocuments.filter(
+        (doc, index, self) =>
+          index === self.findIndex((d) => d.ipfsHash === doc.ipfsHash)
+      );
+      
+      // Total = unique complaint/FIR documents + case proceeding documents
+      const totalDocuments = uniqueDocuments.length + caseProceedingDocs;
 
       return {
         ...case_.toObject(),
@@ -1265,5 +1332,41 @@ router.get(
     }
   }
 );
+
+// Validate data integrity for a case
+router.get("/cases/:caseId/validate-integrity", authenticateToken, async (req, res) => {
+  try {
+    const { caseId } = req.params;
+    const judgeId = req.user.id;
+
+    // Verify judge has access to this case
+    const caseData = await Case.findOne({
+      _id: caseId,
+      assignedJudgeId: judgeId,
+    });
+
+    if (!caseData) {
+      return res.status(404).json({
+        success: false,
+        message: "Case not found or not assigned to you",
+      });
+    }
+
+    // Validate workflow data integrity
+    const integrityCheck = await validateWorkflowDataIntegrity(caseId, Case, FIR, Complaint);
+
+    res.json({
+      success: true,
+      data: integrityCheck,
+    });
+  } catch (error) {
+    console.error("Data integrity validation error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to validate data integrity",
+      error: error.message,
+    });
+  }
+});
 
 export default router;

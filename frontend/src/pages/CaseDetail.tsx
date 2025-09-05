@@ -187,8 +187,35 @@ export const CaseDetail = () => {
           } catch (err) {
             setError("No case data provided. Please select a case from the list.");
           }
+        } else if (caseId && user?.role === 'LAWYER') {
+          // For lawyers, fetch case details from lawyer API
+          try {
+            const response = await api.get(`/lawyers/cases/${caseId}`);
+            if (response.data.success) {
+              console.log('Lawyer case details received:', {
+                allDocuments: response.data.data.allDocuments?.length || 0,
+                allAccused: response.data.data.allAccused?.length || 0,
+                documents: response.data.data.allDocuments?.map(d => ({
+                  fileName: d.fileName,
+                  documentSource: d.documentSource,
+                  ipfsHash: d.ipfsHash
+                })),
+                accused: response.data.data.allAccused?.map(a => ({
+                  name: a.name,
+                  address: a.address,
+                  phone: a.phone
+                }))
+              });
+              setCaseDetail(response.data.data);
+            } else {
+              setError("Failed to fetch case details");
+            }
+          } catch (err) {
+            console.error('Error fetching lawyer case details:', err);
+            setError("Failed to fetch case details. Please try again.");
+          }
         } else {
-          // If no data passed and not a judge or citizen, redirect back to cases list
+          // If no data passed and not a judge, citizen, or lawyer, redirect back to cases list
           setError("No case data provided. Please select a case from the list.");
         }
       } catch (err: any) {
@@ -816,26 +843,26 @@ export const CaseDetail = () => {
               </Card>
             )}
 
-            {/* Quick Actions */}
+            {/* Quick Actions - Judge Specific */}
             <Card className="card-elegant">
               <CardHeader>
                 <CardTitle>Quick Actions</CardTitle>
                 <CardDescription>
-                  Common tasks for your case
+                  Common tasks for case management
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Button variant="outline" className="w-full" asChild>
-                  <Link to="/lawyers">
-                    <Users className="h-4 w-4 mr-2" />
-                    Find Lawyer
+                  <Link to="/judge/cases">
+                    <Scale className="h-4 w-4 mr-2" />
+                    View All Cases
                   </Link>
                 </Button>
                 
                 <Button variant="outline" className="w-full" asChild>
-                  <Link to="/file-complaint">
+                  <Link to="/judge/firs">
                     <FileText className="h-4 w-4 mr-2" />
-                    File New Complaint
+                    Review FIRs
                   </Link>
                 </Button>
               </CardContent>

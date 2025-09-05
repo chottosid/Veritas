@@ -341,13 +341,27 @@ router.get("/cases/:caseId", authenticateToken, async (req, res) => {
       .populate("investigatingOfficerIds", "name rank station")
       .populate({
         path: "firId",
-        populate: {
-          path: "complaintId",
-          populate: {
-            path: "complainantId",
-            select: "name nid phone",
+        populate: [
+          {
+            path: "complaintId",
+            populate: [
+              {
+                path: "complainantId",
+                select: "name nid phone",
+              },
+              {
+                path: "accused",
+                select:
+                  "name address phone email nid age gender occupation relationshipToComplainant addedBy addedById",
+              },
+            ],
           },
-        },
+          {
+            path: "accused",
+            select:
+              "name address phone email nid age gender occupation relationshipToComplainant addedBy addedById",
+          },
+        ],
       });
 
     if (!caseData) {
@@ -357,9 +371,132 @@ router.get("/cases/:caseId", authenticateToken, async (req, res) => {
       });
     }
 
+    console.log("Lawyer case data found:", {
+      caseId: caseData._id,
+      firId: caseData.firId?._id,
+      complaintId: caseData.firId?.complaintId?._id,
+      complaintAttachments: caseData.firId?.complaintId?.attachments?.length || 0,
+      firAttachments: caseData.firId?.attachments?.length || 0,
+    });
+
+    // Get all case proceedings with attachments
+    const caseProceedings = await CaseProceeding.find({ caseId: caseId })
+      .populate("createdById", "name")
+      .sort({ at: -1 });
+
+    // Get all documents from case proceedings
+    const caseDocuments = [];
+    caseProceedings.forEach((proceeding) => {
+      if (proceeding.attachments && proceeding.attachments.length > 0) {
+        proceeding.attachments.forEach((doc) => {
+          caseDocuments.push({
+            fileName: doc.fileName,
+            ipfsHash: doc.ipfsHash,
+            fileSize: doc.fileSize,
+            uploadedAt: doc.uploadedAt,
+            documentSource: "CASE_PROCEEDING",
+            proceedingType: proceeding.type,
+            proceedingDescription: proceeding.description,
+            createdByRole: proceeding.createdByRole,
+            createdAt: proceeding.at,
+          });
+        });
+      }
+    });
+
+    // Get documents from complaint
+    const complaintDocuments = [];
+    if (caseData.firId && caseData.firId.complaintId && caseData.firId.complaintId.attachments) {
+      caseData.firId.complaintId.attachments.forEach((doc) => {
+        complaintDocuments.push({
+          fileName: doc.fileName,
+          ipfsHash: doc.ipfsHash,
+          fileSize: doc.fileSize,
+          uploadedAt: doc.uploadedAt,
+          documentSource: "COMPLAINT",
+          proceedingType: "COMPLAINT_FILED",
+          proceedingDescription: "Documents attached during complaint filing",
+          createdByRole: "CITIZEN",
+          createdAt: doc.uploadedAt,
+        });
+      });
+    }
+
+    // Get documents from FIR
+    const firDocuments = [];
+    if (caseData.firId && caseData.firId.attachments) {
+      caseData.firId.attachments.forEach((doc) => {
+        firDocuments.push({
+          fileName: doc.fileName,
+          ipfsHash: doc.ipfsHash,
+          fileSize: doc.fileSize,
+          uploadedAt: doc.uploadedAt,
+          documentSource: "FIR",
+          proceedingType: "FIR_REGISTERED",
+          proceedingDescription: "Documents attached during FIR registration",
+          createdByRole: "POLICE",
+          createdAt: doc.uploadedAt,
+        });
+      });
+    }
+
+    // Combine all documents and deduplicate by ipfsHash
+    const allDocuments = [
+      ...complaintDocuments,
+      ...firDocuments,
+      ...caseDocuments,
+    ];
+
+    // Deduplicate documents by ipfsHash to prevent duplicates
+    const uniqueDocuments = allDocuments.filter(
+      (doc, index, self) =>
+        index === self.findIndex((d) => d.ipfsHash === doc.ipfsHash)
+    );
+
+    // Sort by creation date
+    const sortedDocuments = uniqueDocuments.sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
+
+    console.log("Lawyer documents found:", {
+      complaintDocuments: complaintDocuments.length,
+      firDocuments: firDocuments.length,
+      caseDocuments: caseDocuments.length,
+      totalDocuments: sortedDocuments.length,
+      uniqueDocuments: uniqueDocuments.length,
+    });
+
+    // Aggregate all accused information from complaint and FIR
+    const complaintAccused = caseData.firId.complaintId.accused || [];
+    const firAccused = caseData.firId.accused || [];
+
+    // Combine and deduplicate accused information
+    const allAccused = [...complaintAccused, ...firAccused];
+    const uniqueAccused = allAccused.filter(
+      (accused, index, self) =>
+        index ===
+        self.findIndex(
+          (a) => a.name === accused.name && a.address === accused.address
+        )
+    );
+
+    console.log("Lawyer accused found:", {
+      complaintAccused: complaintAccused.length,
+      firAccused: firAccused.length,
+      totalAccused: allAccused.length,
+      uniqueAccused: uniqueAccused.length,
+    });
+
+    // Combine case data with documents and accused information
+    const caseWithDocuments = {
+      ...caseData.toObject(),
+      allDocuments: sortedDocuments,
+      allAccused: uniqueAccused,
+    };
+
     res.json({
       success: true,
-      data: caseData,
+      data: caseWithDocuments,
     });
   } catch (error) {
     console.error("Get case details error:", error);

@@ -18,6 +18,7 @@ import {
   Search, 
   Gavel, 
   User, 
+  Users,
   MapPin, 
   Clock, 
   AlertCircle,
@@ -386,6 +387,79 @@ export const JudgeFIRs = () => {
                                   </div>
                                 </div>
                               </div>
+
+                              {/* Accused Persons */}
+                              {selectedFir.accused && selectedFir.accused.length > 0 && (
+                                <>
+                                  <Separator />
+                                  <div className="space-y-4">
+                                    <h4 className="font-semibold flex items-center gap-2">
+                                      <Users className="h-4 w-4" />
+                                      Accused Persons
+                                    </h4>
+                                    <div className="space-y-3">
+                                      {selectedFir.accused.map((accused, index) => (
+                                        <div key={index} className="p-4 border rounded-lg bg-red-50 border-red-200">
+                                          <div className="flex items-start gap-3">
+                                            <User className="h-5 w-5 text-red-600 mt-1" />
+                                            <div className="flex-1">
+                                              <div className="flex items-center gap-2 mb-2">
+                                                <h5 className="font-medium text-red-900">{accused.name}</h5>
+                                                <Badge variant="outline" className="text-xs">
+                                                  {accused.addedBy}
+                                                </Badge>
+                                              </div>
+                                              
+                                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                                <div>
+                                                  <span className="text-muted-foreground">Address:</span>
+                                                  <p className="font-medium">{accused.address}</p>
+                                                </div>
+                                                <div>
+                                                  <span className="text-muted-foreground">Phone:</span>
+                                                  <p className="font-medium">{accused.phone || 'N/A'}</p>
+                                                </div>
+                                                <div>
+                                                  <span className="text-muted-foreground">NID:</span>
+                                                  <p className="font-medium">{accused.nid || 'N/A'}</p>
+                                                </div>
+                                                <div>
+                                                  <span className="text-muted-foreground">Email:</span>
+                                                  <p className="font-medium">{accused.email || 'N/A'}</p>
+                                                </div>
+                                                {accused.age && (
+                                                  <div>
+                                                    <span className="text-muted-foreground">Age:</span>
+                                                    <p className="font-medium">{accused.age}</p>
+                                                  </div>
+                                                )}
+                                                {accused.gender && (
+                                                  <div>
+                                                    <span className="text-muted-foreground">Gender:</span>
+                                                    <p className="font-medium">{accused.gender}</p>
+                                                  </div>
+                                                )}
+                                                {accused.occupation && (
+                                                  <div>
+                                                    <span className="text-muted-foreground">Occupation:</span>
+                                                    <p className="font-medium">{accused.occupation}</p>
+                                                  </div>
+                                                )}
+                                                {accused.relationshipToComplainant && (
+                                                  <div className="md:col-span-2">
+                                                    <span className="text-muted-foreground">Relationship to Complainant:</span>
+                                                    <p className="font-medium">{accused.relationshipToComplainant}</p>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </>
+                              )}
 
                               {/* Attachments */}
                               {selectedFir.attachments.length > 0 && (

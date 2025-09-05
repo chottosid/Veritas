@@ -55,7 +55,7 @@ try {
   console.log("🔍 Checking environment variables...");
   const envContent = fs.readFileSync(envPath, "utf-8");
 
-  const requiredVars = ["BLOCKCHAIN_TEST_MODE", "AMOY_RPC_URL", "PRIVATE_KEY"];
+  const requiredVars = ["BLOCKCHAIN_TEST_MODE", "CELO_SEPOLIA_RPC_URL", "PRIVATE_KEY"];
 
   const missingVars = [];
   for (const varName of requiredVars) {
@@ -103,14 +103,14 @@ try {
   } else {
     console.log("📋 Contract not deployed yet");
     console.log(
-      "   Run: cd blockchain && npx hardhat run scripts/deploy.js --network amoy"
+      "   Run: cd blockchain && npx hardhat run scripts/deploy.js --network celo-sepolia"
     );
   }
 
   console.log("\n🎉 Blockchain setup check completed!");
   console.log("\nNext steps:");
   console.log(
-    "1. If contract not deployed: cd blockchain && npx hardhat run scripts/deploy.js --network amoy"
+    "1. If contract not deployed: cd blockchain && npx hardhat run scripts/deploy.js --network celo-sepolia"
   );
   console.log("2. Update .env with CONTRACT_ADDRESS if needed");
   console.log("3. Start your backend server: npm start");

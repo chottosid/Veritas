@@ -19,7 +19,9 @@ import {
   Clock,
   Building2,
   Users,
-  Download
+  Download,
+  Phone,
+  Mail
 } from 'lucide-react';
 import { buildApiUrl, API_CONFIG, getIPFSUrl } from '../config/api';
 import { useAuthStore } from '../store/authStore';
@@ -605,6 +607,147 @@ const LawyerCases: React.FC = () => {
                                         <div key={index} className="flex items-center gap-2 text-sm">
                                           <Calendar className="h-4 w-4 text-gray-500" />
                                           <span>{formatDate(date)}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Accused Information */}
+                                {caseDetails.allAccused && caseDetails.allAccused.length > 0 && (
+                                  <div>
+                                    <h3 className="text-lg font-medium text-gray-900 mb-3">Accused Persons</h3>
+                                    <div className="space-y-3">
+                                      {caseDetails.allAccused.map((accused, index) => (
+                                        <div key={index} className="p-4 rounded-lg border border-red-200 bg-red-50">
+                                          <div className="flex items-start gap-3">
+                                            <User className="h-5 w-5 text-red-600 mt-1" />
+                                            <div className="flex-1">
+                                              <div className="flex items-center gap-2 mb-2">
+                                                <h5 className="font-medium text-red-900">{accused.name}</h5>
+                                                {accused.age && (
+                                                  <Badge variant="outline" className="text-xs">
+                                                    Age: {accused.age}
+                                                  </Badge>
+                                                )}
+                                                {accused.gender && (
+                                                  <Badge variant="outline" className="text-xs">
+                                                    {accused.gender}
+                                                  </Badge>
+                                                )}
+                                              </div>
+                                              
+                                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                                <div>
+                                                  <span className="font-medium text-red-800">Address:</span>
+                                                  <p className="text-red-700">{accused.address}</p>
+                                                </div>
+                                              
+                                                {accused.phone && (
+                                                  <div>
+                                                    <span className="font-medium text-red-800">Phone:</span>
+                                                    <p className="text-red-700 flex items-center gap-1">
+                                                      <Phone className="h-3 w-3" />
+                                                      {accused.phone}
+                                                    </p>
+                                                  </div>
+                                                )}
+                                              
+                                                {accused.email && (
+                                                  <div>
+                                                    <span className="font-medium text-red-800">Email:</span>
+                                                    <p className="text-red-700 flex items-center gap-1">
+                                                      <Mail className="h-3 w-3" />
+                                                      {accused.email}
+                                                    </p>
+                                                  </div>
+                                                )}
+                                              
+                                                {accused.nid && (
+                                                  <div>
+                                                    <span className="font-medium text-red-800">NID:</span>
+                                                    <p className="text-red-700">{accused.nid}</p>
+                                                  </div>
+                                                )}
+                                              
+                                                {accused.occupation && (
+                                                  <div>
+                                                    <span className="font-medium text-red-800">Occupation:</span>
+                                                    <p className="text-red-700">{accused.occupation}</p>
+                                                  </div>
+                                                )}
+                                              
+                                                {accused.relationshipToComplainant && (
+                                                  <div>
+                                                    <span className="font-medium text-red-800">Relationship:</span>
+                                                    <p className="text-red-700">{accused.relationshipToComplainant}</p>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Case Documents */}
+                                {caseDetails.allDocuments && caseDetails.allDocuments.length > 0 && (
+                                  <div>
+                                    <h3 className="text-lg font-medium text-gray-900 mb-3">Case Documents</h3>
+                                    <div className="space-y-3 max-h-64 overflow-y-auto">
+                                      {caseDetails.allDocuments.map((document, index) => (
+                                        <div key={`${document.ipfsHash}-${document.documentSource}-${index}`} className="p-3 rounded-lg border bg-gray-50">
+                                          <div className="flex items-start justify-between">
+                                            <div className="flex items-start gap-3 flex-1">
+                                              <FileText className="h-4 w-4 text-primary mt-1" />
+                                              <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                  <h4 className="font-medium text-sm">{document.fileName}</h4>
+                                                  <Badge variant="outline" className="text-xs">
+                                                    {document.documentSource}
+                                                  </Badge>
+                                                  <Badge variant="secondary" className="text-xs">
+                                                    {document.createdByRole}
+                                                  </Badge>
+                                                </div>
+                                                
+                                                <p className="text-xs text-gray-600 mb-1">
+                                                  {document.proceedingDescription}
+                                                </p>
+                                                
+                                                <div className="flex items-center gap-4 text-xs text-gray-500">
+                                                  <span>Size: {(document.fileSize / 1024 / 1024).toFixed(2)} MB</span>
+                                                  <span>Uploaded: {formatDate(document.uploadedAt)}</span>
+                                                </div>
+                                              </div>
+                                            </div>
+                                            
+                                            <div className="flex gap-1">
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => window.open(`https://gateway.pinata.cloud/ipfs/${document.ipfsHash}`, '_blank')}
+                                                className="text-xs px-2 py-1"
+                                              >
+                                                View
+                                              </Button>
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => {
+                                                  const link = document.createElement('a');
+                                                  link.href = `https://gateway.pinata.cloud/ipfs/${document.ipfsHash}`;
+                                                  link.download = document.fileName;
+                                                  link.click();
+                                                }}
+                                                className="text-xs px-2 py-1"
+                                              >
+                                                Download
+                                              </Button>
+                                            </div>
+                                          </div>
                                         </div>
                                       ))}
                                     </div>

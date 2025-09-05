@@ -14,15 +14,18 @@ const config = {
     },
   },
   networks: {
-    amoy: {
+    "celo-sepolia": {
       type: "http",
-      url: process.env.AMOY_RPC_URL || "https://rpc-amoy.polygon.technology/",
+      url: process.env.CELO_SEPOLIA_RPC_URL || "https://forno.celo-sepolia.celo-testnet.org",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-      chainId: 80002,
+      chainId: 11142220,
+      timeout: 60000,
+      gas: 2100000,
+      gasPrice: 1000000000,
     },
   },
   etherscan: {
-    apiKey: process.env.POLYGONSCAN_API_KEY || "",
+    apiKey: process.env.CELOSCAN_API_KEY || "",
   },
 };
 

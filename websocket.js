@@ -10,7 +10,7 @@ class WebSocketServer {
   initialize(server) {
     this.io = new Server(server, {
       cors: {
-        origin: process.env.FRONTEND_URL || "http://localhost:5173",
+        origin: process.env.FRONTEND_URL || "http://localhost:8080",
         methods: ["GET", "POST"],
         credentials: true,
       },
@@ -44,7 +44,16 @@ class WebSocketServer {
         next();
       } catch (error) {
         console.error("WebSocket authentication error:", error);
-        next(new Error("Authentication error: Invalid token"));
+        
+        // Handle different types of JWT errors
+        if (error.name === 'TokenExpiredError') {
+          console.log(`Token expired for user at ${error.expiredAt}`);
+          next(new Error("Authentication error: Token expired. Please log in again."));
+        } else if (error.name === 'JsonWebTokenError') {
+          next(new Error("Authentication error: Invalid token format"));
+        } else {
+          next(new Error("Authentication error: Invalid token"));
+        }
       }
     });
   }

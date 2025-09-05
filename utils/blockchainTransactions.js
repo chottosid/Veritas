@@ -11,22 +11,41 @@ export const trackTransaction = async ({
   metadata = null,
 }) => {
   try {
-    const transaction = new BlockchainTransaction({
+    // Check if database is connected
+    const mongoose = await import("mongoose");
+    if (mongoose.default.connection.readyState !== 1) {
+      console.log("Database not connected, skipping transaction tracking");
+      return { ok: true, skipped: true, reason: "Database not connected" };
+    }
+
+    // Helper function to validate ObjectId
+    const isValidObjectId = (id) => {
+      if (!id) return false;
+      return /^[0-9a-fA-F]{24}$/.test(id.toString());
+    };
+
+    // Only include valid ObjectIds in the transaction data
+    const transactionData = {
       transactionHash,
       eventType,
-      caseId,
-      complaintId,
-      firId,
-      evidenceId,
       metadata,
       status: "PENDING",
-    });
+    };
 
+    // Add IDs only if they are valid ObjectIds
+    if (isValidObjectId(caseId)) transactionData.caseId = caseId;
+    if (isValidObjectId(complaintId)) transactionData.complaintId = complaintId;
+    if (isValidObjectId(firId)) transactionData.firId = firId;
+    if (isValidObjectId(evidenceId)) transactionData.evidenceId = evidenceId;
+
+    const transaction = new BlockchainTransaction(transactionData);
     await transaction.save();
+    console.log(`Transaction tracked: ${transactionHash} (${eventType})`);
     return { ok: true, transaction };
   } catch (error) {
     console.error("Failed to track transaction:", error);
-    return { ok: false, error: error.message };
+    // Don't fail the blockchain operation if tracking fails
+    return { ok: true, skipped: true, error: error.message };
   }
 };
 

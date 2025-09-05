@@ -9,6 +9,18 @@ import {
   isBlockchainReady,
   isBlockchainTestMode,
 } from "../utils/blockchain.js";
+import {
+  confirmTransaction,
+  confirmAllPendingTransactions,
+  getTransactionStatus,
+  isConfirmationReady,
+} from "../utils/blockchainConfirmation.js";
+import {
+  validateRecentTransactions,
+  validateAllPendingTransactions,
+  getTransactionStatusWithValidation,
+} from "../utils/blockchainValidation.js";
+import { blockchainSyncJob } from "../utils/blockchainSync.js";
 
 const router = express.Router();
 
@@ -172,11 +184,11 @@ router.get("/verify/case/:caseId", async (req, res) => {
 
     // Get case evidence from blockchain
     const evidenceResult = await getCaseEvidence(actualCaseId);
-    const evidence = evidenceResult.ok ? evidenceResult.data : [];
+    const evidence = evidenceResult.ok && Array.isArray(evidenceResult.data) ? evidenceResult.data : [];
 
     // Get case updates from blockchain
     const updatesResult = await getCaseUpdates(actualCaseId);
-    const updates = updatesResult.ok ? updatesResult.data : [];
+    const updates = updatesResult.ok && Array.isArray(updatesResult.data) ? updatesResult.data : [];
 
     // Get case proceedings from database for additional context
     const proceedings = await CaseProceeding.find({ caseId: caseData._id })
@@ -208,7 +220,7 @@ router.get("/verify/case/:caseId", async (req, res) => {
         type: e.evidenceType,
         ipfsHash: e.ipfsHash,
         description: e.description,
-        submittedAt: new Date(e.timestamp * 1000).toISOString(),
+        submittedAt: e.timestamp ? new Date(e.timestamp * 1000).toISOString() : new Date().toISOString(),
         verified: e.isVerified,
       })),
       // Add evidence from case proceedings (only actual evidence, not orders/documents)
@@ -266,21 +278,25 @@ router.get("/verify/case/:caseId", async (req, res) => {
 
     // Combine updates from blockchain and database
     const combinedUpdates = [
-      ...updates.map((u) => ({
-        type: u.updateType,
-        description: u.description,
-        actor: u.actor,
-        timestamp: new Date(u.timestamp * 1000).toISOString(),
-        metadata: u.metadata,
-      })),
+      ...updates
+        .filter((u) => u.updateType && u.description) // Only include complete updates
+        .map((u) => ({
+          type: u.updateType,
+          description: u.description,
+          actor: u.actor,
+          timestamp: u.timestamp ? new Date(u.timestamp * 1000).toISOString() : new Date().toISOString(),
+          metadata: u.metadata,
+        })),
       // Add updates from case proceedings
-      ...proceedings.map((p) => ({
-        type: p.type,
-        description: p.description,
-        actor: p.createdById ? p.createdById.name : p.createdByRole,
-        timestamp: p.at.toISOString(),
-        metadata: formatMetadata(p.metadata),
-      })),
+      ...proceedings
+        .filter((p) => p.type && p.description) // Only include complete proceedings
+        .map((p) => ({
+          type: p.type || 'CASE_UPDATE',
+          description: p.description || 'Case proceeding updated',
+          actor: p.createdById ? p.createdById.name : p.createdByRole || 'System',
+          timestamp: p.at.toISOString(),
+          metadata: formatMetadata(p.metadata),
+        })),
     ];
 
     const responseData = {
@@ -386,61 +402,30 @@ router.get("/explorer", async (req, res) => {
     // Get blockchain stats
     const stats = await getBlockchainStats();
 
-    // Mock recent transactions for demo purposes
-    // In production, you'd query actual blockchain events
-    const mockTransactions = [
-      {
-        hash: "0x1234567890abcdef1234567890abcdef12345678",
-        type: "CASE_CREATED",
-        caseNumber: "CASE-2025-002",
-        timestamp: new Date(Date.now() - 3600000).toISOString(),
-        blockNumber: stats.data.blockNumber - 100,
-        gasUsed: "150000",
-        status: "CONFIRMED",
-      },
-      {
-        hash: "0xabcdef1234567890abcdef1234567890abcdef12",
-        type: "EVIDENCE_SUBMITTED",
-        caseNumber: "CASE-2025-002",
-        timestamp: new Date(Date.now() - 7200000).toISOString(),
-        blockNumber: stats.data.blockNumber - 200,
-        gasUsed: "120000",
-        status: "CONFIRMED",
-      },
-      {
-        hash: "0x567890abcdef1234567890abcdef1234567890ab",
-        type: "FIR_REGISTERED",
-        caseNumber: "FIR-2025-002",
-        timestamp: new Date(Date.now() - 10800000).toISOString(),
-        blockNumber: stats.data.blockNumber - 300,
-        gasUsed: "180000",
-        status: "CONFIRMED",
-      },
-    ];
+    // Import the getRecentTransactions utility function
+    const { getRecentTransactions } = await import("../utils/blockchainTransactions.js");
 
-    // Filter by type if specified
-    const filteredTransactions = type
-      ? mockTransactions.filter((tx) => tx.type === type)
-      : mockTransactions;
-
-    // Pagination
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
-    const paginatedTransactions = filteredTransactions.slice(
-      startIndex,
-      endIndex
+    // Get real transactions from the database
+    const transactionsResult = await getRecentTransactions(
+      parseInt(limit),
+      parseInt(page),
+      type || null
     );
 
+    if (!transactionsResult.ok) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch transactions",
+        error: transactionsResult.error,
+      });
+    }
+
+    // The getRecentTransactions function already returns the data in the correct format
     res.json({
       success: true,
       data: {
-        transactions: paginatedTransactions,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total: filteredTransactions.length,
-          pages: Math.ceil(filteredTransactions.length / limit),
-        },
+        transactions: transactionsResult.data.transactions,
+        pagination: transactionsResult.data.pagination,
         blockchain: {
           network: "Polygon Amoy Testnet",
           currentBlock: stats.data.blockNumber,
@@ -513,6 +498,341 @@ router.get("/transparency", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to get transparency information",
+      error: error.message,
+    });
+  }
+});
+
+// Confirm a specific transaction
+router.post("/confirm/:transactionHash", async (req, res) => {
+  try {
+    const { transactionHash } = req.params;
+    
+    if (!isConfirmationReady()) {
+      return res.status(503).json({
+        success: false,
+        message: "Blockchain confirmation service not available",
+      });
+    }
+
+    const result = await confirmTransaction(transactionHash);
+    
+    if (result.ok) {
+      res.json({
+        success: true,
+        message: "Transaction confirmed successfully",
+        data: result.transaction,
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: "Failed to confirm transaction",
+        error: result.error,
+      });
+    }
+  } catch (error) {
+    console.error("Transaction confirmation error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to confirm transaction",
+      error: error.message,
+    });
+  }
+});
+
+// Confirm all pending transactions
+router.post("/confirm-all", async (req, res) => {
+  try {
+    if (!isConfirmationReady()) {
+      return res.status(503).json({
+        success: false,
+        message: "Blockchain confirmation service not available",
+      });
+    }
+
+    const result = await confirmAllPendingTransactions();
+    
+    if (result.ok) {
+      res.json({
+        success: true,
+        message: "All pending transactions processed",
+        data: result.data,
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: "Failed to confirm transactions",
+        error: result.error,
+      });
+    }
+  } catch (error) {
+    console.error("Bulk transaction confirmation error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to confirm transactions",
+      error: error.message,
+    });
+  }
+});
+
+// Get transaction status
+router.get("/transaction/:transactionHash/status", async (req, res) => {
+  try {
+    const { transactionHash } = req.params;
+    
+    const result = await getTransactionStatus(transactionHash);
+    
+    if (result.ok) {
+      res.json({
+        success: true,
+        data: result.data,
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: "Failed to get transaction status",
+        error: result.error,
+      });
+    }
+  } catch (error) {
+    console.error("Get transaction status error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get transaction status",
+      error: error.message,
+    });
+  }
+});
+
+// Manually add a confirmed transaction to the database
+router.post("/add-transaction", async (req, res) => {
+  try {
+    const { transactionHash, eventType, caseId, complaintId, firId, metadata } = req.body;
+    
+    if (!transactionHash || !eventType) {
+      return res.status(400).json({
+        success: false,
+        message: "Transaction hash and event type are required",
+      });
+    }
+
+    // Check if transaction exists on blockchain
+    const blockchainStatus = await getTransactionStatus(transactionHash);
+    if (!blockchainStatus.ok) {
+      return res.status(400).json({
+        success: false,
+        message: "Transaction not found on blockchain",
+        error: blockchainStatus.error,
+      });
+    }
+
+    // Import the tracking function
+    const { trackTransaction } = await import("../utils/blockchainTransactions.js");
+    
+    // Track the transaction
+    const result = await trackTransaction({
+      transactionHash,
+      eventType,
+      caseId,
+      complaintId,
+      firId,
+      metadata,
+    });
+
+    if (result.ok && !result.skipped) {
+      // Update status to confirmed if it's confirmed on blockchain
+      if (blockchainStatus.data.status === "CONFIRMED") {
+        const { updateTransactionStatus } = await import("../utils/blockchainTransactions.js");
+        await updateTransactionStatus(transactionHash, "CONFIRMED", {
+          blockNumber: blockchainStatus.data.blockNumber,
+          gasUsed: blockchainStatus.data.gasUsed,
+          gasPrice: blockchainStatus.data.gasPrice,
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Transaction added to database",
+        data: {
+          transactionHash,
+          blockchainStatus: blockchainStatus.data,
+        },
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: "Failed to add transaction to database",
+        error: result.error || result.reason,
+      });
+    }
+  } catch (error) {
+    console.error("Add transaction error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to add transaction",
+      error: error.message,
+    });
+  }
+});
+
+// Validate recent transactions against blockchain
+router.post("/validate-recent", async (req, res) => {
+  try {
+    const { limit = 10 } = req.body;
+    
+    const result = await validateRecentTransactions(parseInt(limit));
+    
+    if (result.ok) {
+      res.json({
+        success: true,
+        message: "Recent transactions validated against blockchain",
+        data: result.data,
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: "Failed to validate transactions",
+        error: result.error,
+      });
+    }
+  } catch (error) {
+    console.error("Validate recent transactions error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to validate transactions",
+      error: error.message,
+    });
+  }
+});
+
+// Validate all pending transactions
+router.post("/validate-all-pending", async (req, res) => {
+  try {
+    const result = await validateAllPendingTransactions();
+    
+    if (result.ok) {
+      res.json({
+        success: true,
+        message: "All pending transactions validated against blockchain",
+        data: result.data,
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: "Failed to validate transactions",
+        error: result.error,
+      });
+    }
+  } catch (error) {
+    console.error("Validate all pending transactions error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to validate transactions",
+      error: error.message,
+    });
+  }
+});
+
+// Get transaction status with blockchain validation
+router.get("/transaction/:transactionHash/validate", async (req, res) => {
+  try {
+    const { transactionHash } = req.params;
+    
+    const result = await getTransactionStatusWithValidation(transactionHash);
+    
+    if (result.ok) {
+      res.json({
+        success: true,
+        data: result.data,
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: "Failed to validate transaction",
+        error: result.error,
+      });
+    }
+  } catch (error) {
+    console.error("Validate transaction error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to validate transaction",
+      error: error.message,
+    });
+  }
+});
+
+// Blockchain sync job control endpoints
+router.get("/sync/status", async (req, res) => {
+  try {
+    const stats = await blockchainSyncJob.getStats();
+    res.json({
+      success: true,
+      data: stats,
+    });
+  } catch (error) {
+    console.error("Get sync status error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get sync status",
+      error: error.message,
+    });
+  }
+});
+
+router.post("/sync/start", async (req, res) => {
+  try {
+    const { interval = 30000 } = req.body;
+    blockchainSyncJob.start(parseInt(interval));
+    
+    res.json({
+      success: true,
+      message: "Blockchain sync job started",
+      data: blockchainSyncJob.getStatus(),
+    });
+  } catch (error) {
+    console.error("Start sync job error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to start sync job",
+      error: error.message,
+    });
+  }
+});
+
+router.post("/sync/stop", async (req, res) => {
+  try {
+    blockchainSyncJob.stop();
+    
+    res.json({
+      success: true,
+      message: "Blockchain sync job stopped",
+      data: blockchainSyncJob.getStatus(),
+    });
+  } catch (error) {
+    console.error("Stop sync job error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to stop sync job",
+      error: error.message,
+    });
+  }
+});
+
+router.post("/sync/trigger", async (req, res) => {
+  try {
+    await blockchainSyncJob.triggerSync();
+    
+    res.json({
+      success: true,
+      message: "Blockchain sync triggered",
+      data: blockchainSyncJob.getStatus(),
+    });
+  } catch (error) {
+    console.error("Trigger sync error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to trigger sync",
       error: error.message,
     });
   }

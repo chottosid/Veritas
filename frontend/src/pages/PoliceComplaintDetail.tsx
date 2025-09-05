@@ -169,7 +169,7 @@ export const PoliceComplaintDetail = () => {
 
   const addPoliceAccused = () => {
     const newAccused: AccusedPerson = {
-      _id: Date.now().toString(),
+      _id: `temp_${Date.now()}`, // Use a temporary ID that won't conflict with MongoDB ObjectIds
       name: '',
       address: '',
       phone: '',
@@ -193,6 +193,76 @@ export const PoliceComplaintDetail = () => {
     setPoliceAccused(prev => prev.map(acc => 
       acc._id === id ? { ...acc, [field]: value } : acc
     ));
+  };
+
+  // Save accused persons to the complaint
+  const saveAccusedToComplaint = async () => {
+    if (!validatePoliceAccused()) {
+      return;
+    }
+
+    try {
+      // Combine existing accused from complaint with new police accused
+      const allAccused = [...(complaint?.accused || []), ...policeAccused];
+      
+      const response = await api.put(`/police/complaints/${complaintId}/accused`, {
+        accused: allAccused
+      });
+
+      if (response.data.success) {
+        toast({
+          title: "Accused Persons Updated",
+          description: "Accused persons have been successfully updated",
+        });
+        setComplaint(response.data.data);
+        setPoliceAccused([]); // Clear the local state
+      } else {
+        toast({
+          title: "Error",
+          description: response.data.message || "Failed to update accused persons",
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      console.error('Error updating accused persons:', err);
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || "Failed to update accused persons",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Remove accused person from complaint
+  const removeAccusedFromComplaint = async (accusedId: string) => {
+    try {
+      const updatedAccused = complaint?.accused.filter(acc => acc._id !== accusedId) || [];
+      
+      const response = await api.put(`/police/complaints/${complaintId}/accused`, {
+        accused: updatedAccused
+      });
+
+      if (response.data.success) {
+        toast({
+          title: "Accused Person Removed",
+          description: "Accused person has been successfully removed",
+        });
+        setComplaint(response.data.data);
+      } else {
+        toast({
+          title: "Error",
+          description: response.data.message || "Failed to remove accused person",
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      console.error('Error removing accused person:', err);
+      toast({
+        title: "Error",
+        description: err.response?.data?.message || "Failed to remove accused person",
+        variant: "destructive",
+      });
+    }
   };
 
   const validatePoliceAccused = (): boolean => {
@@ -251,9 +321,8 @@ export const PoliceComplaintDetail = () => {
       return;
     }
 
-    if (!validatePoliceAccused()) {
-      return;
-    }
+    // Accused persons validation is not needed for FIR creation
+    // as they are already managed in the complaint detail view
 
     try {
       setCreatingFIR(true);
@@ -265,9 +334,8 @@ export const PoliceComplaintDetail = () => {
         formData.append('judgeId', selectedJudgeId);
       }
       
-      if (policeAccused.length > 0) {
-        formData.append('accused', JSON.stringify(policeAccused));
-      }
+      // Accused persons are already managed in the complaint detail view
+      // No need to include them again in FIR creation
       
       if (firAttachments) {
         Array.from(firAttachments).forEach(file => {
@@ -538,13 +606,14 @@ export const PoliceComplaintDetail = () => {
               </Card>
 
               {/* Accused Persons */}
-              {complaint.accused.length > 0 && (
                 <Card className="card-elegant">
                   <CardHeader>
                     <CardTitle>Accused Persons</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-3">
+                  {/* Existing Accused Persons */}
+                  {complaint.accused.length > 0 && (
+                    <div className="space-y-3 mb-4">
                       {complaint.accused.map((accused, index) => (
                         <div key={accused._id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div className="flex items-center gap-3">
@@ -559,19 +628,133 @@ export const PoliceComplaintDetail = () => {
                               </p>
                             </div>
                           </div>
-                          <Button variant="outline" size="sm" onClick={() => removePoliceAccused(accused._id!)}>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => removeAccusedFromComplaint(accused._id!)}
+                          >
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
                       ))}
                     </div>
-                    <Button variant="outline" onClick={addPoliceAccused} className="mt-4">
+                  )}
+
+                  {/* New Accused Persons Form */}
+                  {policeAccused.length > 0 && (
+                    <div className="space-y-4 mb-4 p-4 border-2 border-dashed border-blue-200 rounded-lg">
+                      <h4 className="font-medium text-blue-700">New Accused Persons to Add</h4>
+                      {policeAccused.map((accused, index) => (
+                        <div key={accused._id} className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 border rounded-lg">
+                          <div className="space-y-2">
+                            <Label htmlFor={`name-${accused._id}`}>Name *</Label>
+                            <Input
+                              id={`name-${accused._id}`}
+                              value={accused.name}
+                              onChange={(e) => updatePoliceAccused(accused._id!, 'name', e.target.value)}
+                              placeholder="Full name"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`address-${accused._id}`}>Address *</Label>
+                            <Input
+                              id={`address-${accused._id}`}
+                              value={accused.address}
+                              onChange={(e) => updatePoliceAccused(accused._id!, 'address', e.target.value)}
+                              placeholder="Full address"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`phone-${accused._id}`}>Phone</Label>
+                            <Input
+                              id={`phone-${accused._id}`}
+                              value={accused.phone}
+                              onChange={(e) => updatePoliceAccused(accused._id!, 'phone', e.target.value)}
+                              placeholder="Phone number"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`nid-${accused._id}`}>NID</Label>
+                            <Input
+                              id={`nid-${accused._id}`}
+                              value={accused.nid}
+                              onChange={(e) => updatePoliceAccused(accused._id!, 'nid', e.target.value)}
+                              placeholder="National ID"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`age-${accused._id}`}>Age</Label>
+                            <Input
+                              id={`age-${accused._id}`}
+                              type="number"
+                              value={accused.age || ''}
+                              onChange={(e) => updatePoliceAccused(accused._id!, 'age', parseInt(e.target.value) || undefined)}
+                              placeholder="Age"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`gender-${accused._id}`}>Gender</Label>
+                            <select
+                              id={`gender-${accused._id}`}
+                              value={accused.gender || ''}
+                              onChange={(e) => updatePoliceAccused(accused._id!, 'gender', e.target.value || undefined)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                              <option value="">Select gender</option>
+                              <option value="MALE">Male</option>
+                              <option value="FEMALE">Female</option>
+                              <option value="OTHER">Other</option>
+                            </select>
+                          </div>
+                          <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor={`occupation-${accused._id}`}>Occupation</Label>
+                            <Input
+                              id={`occupation-${accused._id}`}
+                              value={accused.occupation}
+                              onChange={(e) => updatePoliceAccused(accused._id!, 'occupation', e.target.value)}
+                              placeholder="Occupation"
+                            />
+                          </div>
+                          <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor={`relationship-${accused._id}`}>Relationship to Complainant</Label>
+                            <Input
+                              id={`relationship-${accused._id}`}
+                              value={accused.relationshipToComplainant}
+                              onChange={(e) => updatePoliceAccused(accused._id!, 'relationshipToComplainant', e.target.value)}
+                              placeholder="Relationship to complainant"
+                            />
+                          </div>
+                          <div className="md:col-span-2 flex justify-end">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => removePoliceAccused(accused._id!)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="flex gap-2">
+                        <Button onClick={saveAccusedToComplaint} className="bg-blue-600 hover:bg-blue-700">
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Save Accused Persons
+                        </Button>
+                        <Button variant="outline" onClick={() => setPoliceAccused([])}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Add New Accused Button */}
+                  <Button variant="outline" onClick={addPoliceAccused} className="w-full">
                       <Plus className="h-4 w-4 mr-2" />
                       Add Accused Person
                     </Button>
                   </CardContent>
                 </Card>
-              )}
 
               {/* Attachments */}
               {complaint.attachments.length > 0 && (
@@ -732,27 +915,10 @@ export const PoliceComplaintDetail = () => {
                     </p>
                   </div>
 
-                  {/* Accused Section */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm font-medium">Add Accused Persons (Optional)</Label>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={addPoliceAccused}
-                        className="flex items-center gap-2"
-                      >
-                        <UserPlus className="h-4 w-4" />
-                        Add Accused
-                      </Button>
-                    </div>
-                    
-                    <p className="text-sm text-slate-600">
-                      Add details of accused persons if not already provided by the complainant
-                    </p>
+                  {/* Accused persons are already managed in the complaint detail view above */}
 
-                    {policeAccused.length > 0 && (
+                    {/* Removed redundant accused persons form from FIR registration */}
+                    {false && (
                       <div className="space-y-4">
                         {policeAccused.map((acc, index) => (
                           <Card key={acc._id} className="border border-slate-200">
@@ -856,7 +1022,6 @@ export const PoliceComplaintDetail = () => {
                         ))}
                       </div>
                     )}
-                  </div>
                   
                   <div>
                     <Label htmlFor="firAttachments">Attachments (Optional)</Label>

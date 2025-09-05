@@ -5,6 +5,7 @@ import { createServer } from "http";
 import { connectDB, isDBConnected } from "./config/database.js";
 import corsMiddleware from "./middleware/cors.js";
 import websocketServer from "./websocket.js";
+import { blockchainSyncJob } from "./utils/blockchainSync.js";
 
 // Import routes
 import citizenRoutes from "./routes/citizens.js";
@@ -71,8 +72,10 @@ app.use((err, req, res, next) => {
 // Start server function
 const startServer = async () => {
   try {
-    // Connect to database
+    // Connect to database first
+    console.log("🔌 Connecting to database...");
     await connectDB();
+    console.log("✅ Database connected successfully");
 
     // Start the server
     server.listen(PORT, () => {
@@ -81,6 +84,13 @@ const startServer = async () => {
         `📊 Health check available at: http://localhost:${PORT}/health`
       );
       console.log(`🔌 WebSocket server ready for connections`);
+      
+      // Start the blockchain sync job after server is running
+      console.log("🔄 Starting blockchain sync job...");
+      setTimeout(() => {
+        blockchainSyncJob.start(30000); // Run every 30 seconds
+        console.log(`🔄 Blockchain sync job started (30 second interval)`);
+      }, 2000); // Wait 2 seconds for everything to be ready
     });
   } catch (error) {
     console.error("Failed to start server:", error.message);

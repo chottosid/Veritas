@@ -32,7 +32,8 @@ import {
   Plus,
   Upload,
   UserPlus,
-  Settings
+  Settings,
+  Save
 } from 'lucide-react';
 
 interface Case {
@@ -147,6 +148,8 @@ export const JudgeCases = () => {
   const [documentType, setDocumentType] = useState('');
   const [documentDescription, setDocumentDescription] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+  const [isSavingAll, setIsSavingAll] = useState(false);
+  const [isLoadingCaseDetails, setIsLoadingCaseDetails] = useState(false);
 
   useEffect(() => {
     fetchCases();
@@ -352,6 +355,189 @@ export const JudgeCases = () => {
     }
   };
 
+  const handleOpenQuickActions = async (caseId: string) => {
+    try {
+      setIsLoadingCaseDetails(true);
+      
+      // Find the case from the current list first
+      const caseFromList = cases.find(c => c._id === caseId);
+      if (caseFromList) {
+        setSelectedCase(caseFromList);
+      }
+
+      // Fetch full case details including documents
+      const response = await api.get(`/judges/cases/${caseId}`);
+      if (response.data.success) {
+        console.log('Quick actions - Case details received:', {
+          allDocuments: response.data.data.allDocuments?.length || 0,
+          documents: response.data.data.allDocuments?.map(d => ({
+            fileName: d.fileName,
+            documentSource: d.documentSource,
+            ipfsHash: d.ipfsHash
+          }))
+        });
+        setSelectedCase(response.data.data);
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to fetch case details for quick actions",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching case details for quick actions:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load case details. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingCaseDetails(false);
+    }
+  };
+
+  const handleSaveAllActions = async (caseId: string) => {
+    try {
+      setIsSavingAll(true);
+      
+      const actions = [];
+      let hasAnyAction = false;
+
+      // Check if we need to add accused person
+      if (accusedForm.name && accusedForm.address) {
+        actions.push('Adding accused person');
+        hasAnyAction = true;
+      }
+
+      // Check if we need to upload documents
+      if (documentType && selectedFiles && selectedFiles.length > 0) {
+        actions.push('Uploading documents');
+        hasAnyAction = true;
+      }
+
+      // Check if we need to schedule hearing
+      if (hearingDate) {
+        actions.push('Scheduling hearing');
+        hasAnyAction = true;
+      }
+
+      if (!hasAnyAction) {
+        toast({
+          title: "No actions to save",
+          description: "Please fill in at least one section before saving.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Saving changes...",
+        description: `Processing: ${actions.join(', ')}`,
+      });
+
+      // Execute actions in sequence
+      const results = [];
+
+      // 1. Add accused person if needed
+      if (accusedForm.name && accusedForm.address) {
+        try {
+          const response = await api.post(`/judges/cases/${caseId}/accused`, accusedForm);
+          results.push('✅ Accused person added successfully');
+          
+          // Reset accused form
+          setAccusedForm({
+            name: '',
+            address: '',
+            phone: '',
+            email: '',
+            nid: '',
+            age: '',
+            gender: '',
+            occupation: '',
+            relationshipToComplainant: ''
+          });
+        } catch (error) {
+          results.push('❌ Failed to add accused person');
+        }
+      }
+
+      // 2. Upload documents if needed
+      if (documentType && selectedFiles && selectedFiles.length > 0) {
+        try {
+          const formData = new FormData();
+          formData.append('documentType', documentType);
+          formData.append('description', documentDescription);
+          
+          for (let i = 0; i < selectedFiles.length; i++) {
+            formData.append('documents', selectedFiles[i]);
+          }
+
+          const response = await api.post(`/judges/cases/${caseId}/documents`, formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          });
+          
+          results.push('✅ Documents uploaded successfully');
+          
+          // Reset document form
+          setDocumentType('');
+          setDocumentDescription('');
+          setSelectedFiles(null);
+        } catch (error) {
+          results.push('❌ Failed to upload documents');
+        }
+      }
+
+      // 3. Schedule hearing if needed
+      if (hearingDate) {
+        try {
+          const response = await api.post(`/judges/cases/${caseId}/hearing`, {
+            hearingDate: new Date(hearingDate).toISOString()
+          });
+          
+          results.push('✅ Hearing scheduled successfully');
+          
+          // Reset hearing form
+          setHearingDate('');
+        } catch (error) {
+          results.push('❌ Failed to schedule hearing');
+        }
+      }
+
+      // Show results
+      const successCount = results.filter(r => r.startsWith('✅')).length;
+      const totalCount = results.length;
+
+      if (successCount === totalCount) {
+        toast({
+          title: "All changes saved successfully!",
+          description: `Successfully completed ${successCount} action(s).`,
+        });
+      } else {
+        toast({
+          title: "Some actions completed with issues",
+          description: results.join('\n'),
+          variant: "destructive",
+        });
+      }
+
+      // Refresh the case data and re-fetch the selected case details
+      await fetchCases();
+      await handleOpenQuickActions(caseId);
+      
+    } catch (error) {
+      console.error('Error saving all actions:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save changes. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingAll(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'PENDING':
@@ -531,7 +717,7 @@ export const JudgeCases = () => {
                           <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={() => setSelectedCase(case_)}
+                            onClick={() => handleOpenQuickActions(case_._id)}
                           >
                             <Settings className="h-4 w-4 mr-2" />
                             Quick Actions
@@ -548,7 +734,14 @@ export const JudgeCases = () => {
                             </DialogDescription>
                           </DialogHeader>
                           
-                          {selectedCase && (
+                          {isLoadingCaseDetails ? (
+                            <div className="flex items-center justify-center py-8">
+                              <div className="text-center space-y-4">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                                <p className="text-sm text-muted-foreground">Loading case details...</p>
+                              </div>
+                            </div>
+                          ) : selectedCase ? (
                             <div className="space-y-6">
                               {/* Basic Information */}
                               <div className="space-y-4">
@@ -905,14 +1098,170 @@ export const JudgeCases = () => {
                               {/* Actions */}
                               {selectedCase.status !== 'CLOSED' && (
                                 <div className="space-y-6">
-                                  {/* Schedule Hearing */}
-                                  <div className="space-y-4">
-                                    <h4 className="font-semibold flex items-center gap-2">
-                                      <Calendar className="h-4 w-4" />
-                                      Schedule Hearing
-                                    </h4>
-                                    <div className="flex items-end gap-4">
-                                      <div className="flex-1">
+                                  {/* Combined Form for Case Management */}
+                                  <div className="space-y-6 p-6 border rounded-lg bg-muted/20">
+                                    <div className="flex items-center gap-2 mb-4">
+                                      <Settings className="h-5 w-5" />
+                                      <h4 className="font-semibold">Case Management Actions</h4>
+                                    </div>
+                                    
+                                    {/* 1. Add Accused Person */}
+                                    <div className="space-y-4">
+                                      <h5 className="font-medium flex items-center gap-2 text-sm">
+                                        <UserPlus className="h-4 w-4" />
+                                        1. Add Accused Person
+                                      </h5>
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                          <Label htmlFor="accusedName">Name *</Label>
+                                          <Input
+                                            id="accusedName"
+                                            value={accusedForm.name}
+                                            onChange={(e) => setAccusedForm(prev => ({ ...prev, name: e.target.value }))}
+                                            placeholder="Full name"
+                                          />
+                                        </div>
+                                        <div>
+                                          <Label htmlFor="accusedAddress">Address *</Label>
+                                          <Input
+                                            id="accusedAddress"
+                                            value={accusedForm.address}
+                                            onChange={(e) => setAccusedForm(prev => ({ ...prev, address: e.target.value }))}
+                                            placeholder="Full address"
+                                          />
+                                        </div>
+                                        <div>
+                                          <Label htmlFor="accusedPhone">Phone</Label>
+                                          <Input
+                                            id="accusedPhone"
+                                            value={accusedForm.phone}
+                                            onChange={(e) => setAccusedForm(prev => ({ ...prev, phone: e.target.value }))}
+                                            placeholder="Phone number"
+                                          />
+                                        </div>
+                                        <div>
+                                          <Label htmlFor="accusedEmail">Email</Label>
+                                          <Input
+                                            id="accusedEmail"
+                                            type="email"
+                                            value={accusedForm.email}
+                                            onChange={(e) => setAccusedForm(prev => ({ ...prev, email: e.target.value }))}
+                                            placeholder="Email address"
+                                          />
+                                        </div>
+                                        <div>
+                                          <Label htmlFor="accusedNID">NID</Label>
+                                          <Input
+                                            id="accusedNID"
+                                            value={accusedForm.nid}
+                                            onChange={(e) => setAccusedForm(prev => ({ ...prev, nid: e.target.value }))}
+                                            placeholder="National ID"
+                                          />
+                                        </div>
+                                        <div>
+                                          <Label htmlFor="accusedAge">Age</Label>
+                                          <Input
+                                            id="accusedAge"
+                                            type="number"
+                                            value={accusedForm.age}
+                                            onChange={(e) => setAccusedForm(prev => ({ ...prev, age: e.target.value }))}
+                                            placeholder="Age"
+                                          />
+                                        </div>
+                                        <div>
+                                          <Label htmlFor="accusedGender">Gender</Label>
+                                          <Select value={accusedForm.gender} onValueChange={(value) => setAccusedForm(prev => ({ ...prev, gender: value }))}>
+                                            <SelectTrigger>
+                                              <SelectValue placeholder="Select gender" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="MALE">Male</SelectItem>
+                                              <SelectItem value="FEMALE">Female</SelectItem>
+                                              <SelectItem value="OTHER">Other</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                        <div>
+                                          <Label htmlFor="accusedOccupation">Occupation</Label>
+                                          <Input
+                                            id="accusedOccupation"
+                                            value={accusedForm.occupation}
+                                            onChange={(e) => setAccusedForm(prev => ({ ...prev, occupation: e.target.value }))}
+                                            placeholder="Occupation"
+                                          />
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <Label htmlFor="accusedRelationship">Relationship to Complainant</Label>
+                                        <Input
+                                          id="accusedRelationship"
+                                          value={accusedForm.relationshipToComplainant}
+                                          onChange={(e) => setAccusedForm(prev => ({ ...prev, relationshipToComplainant: e.target.value }))}
+                                          placeholder="e.g., neighbor, colleague, relative"
+                                        />
+                                      </div>
+                                    </div>
+
+                                    <Separator />
+
+                                    {/* 2. Upload Documents */}
+                                    <div className="space-y-4">
+                                      <h5 className="font-medium flex items-center gap-2 text-sm">
+                                        <Upload className="h-4 w-4" />
+                                        2. Upload Documents
+                                      </h5>
+                                      <div className="space-y-4">
+                                        <div>
+                                          <Label htmlFor="documentType">Document Type *</Label>
+                                          <Select value={documentType} onValueChange={setDocumentType}>
+                                            <SelectTrigger>
+                                              <SelectValue placeholder="Select document type" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                              <SelectItem value="ORDER">Court Order</SelectItem>
+                                              <SelectItem value="SUMMON">Summon</SelectItem>
+                                              <SelectItem value="NOTICE">Notice</SelectItem>
+                                              <SelectItem value="JUDGMENT">Judgment</SelectItem>
+                                              <SelectItem value="OTHER">Other</SelectItem>
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                        <div>
+                                          <Label htmlFor="documentDescription">Description</Label>
+                                          <Textarea
+                                            id="documentDescription"
+                                            value={documentDescription}
+                                            onChange={(e) => setDocumentDescription(e.target.value)}
+                                            placeholder="Brief description of the document(s)"
+                                            rows={3}
+                                          />
+                                        </div>
+                                        <div>
+                                          <Label htmlFor="documents">Select Files *</Label>
+                                          <Input
+                                            id="documents"
+                                            type="file"
+                                            multiple
+                                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                            onChange={(e) => setSelectedFiles(e.target.files)}
+                                            className="cursor-pointer"
+                                          />
+                                          <p className="text-xs text-muted-foreground mt-1">
+                                            Supported formats: PDF, DOC, DOCX, JPG, JPEG, PNG (Max 5 files)
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <Separator />
+
+                                    {/* 3. Schedule Hearing */}
+                                    <div className="space-y-4">
+                                      <h5 className="font-medium flex items-center gap-2 text-sm">
+                                        <Calendar className="h-4 w-4" />
+                                        3. Schedule Hearing
+                                      </h5>
+                                      <div>
                                         <Label htmlFor="hearingDate">Hearing Date & Time</Label>
                                         <Input
                                           id="hearingDate"
@@ -921,182 +1270,31 @@ export const JudgeCases = () => {
                                           onChange={(e) => setHearingDate(e.target.value)}
                                         />
                                       </div>
+                                    </div>
+
+                                    <Separator />
+
+                                    {/* Single Save Button */}
+                                    <div className="flex items-center justify-center pt-4">
                                       <Button 
-                                        onClick={() => handleScheduleHearing(selectedCase._id)}
-                                        disabled={isSchedulingHearing || !hearingDate}
-                                        className="flex items-center gap-2"
+                                        onClick={() => handleSaveAllActions(selectedCase._id)}
+                                        disabled={isSavingAll || (!accusedForm.name && !accusedForm.address && !documentType && !selectedFiles && !hearingDate)}
+                                        className="flex items-center gap-2 px-8 py-3 text-base"
+                                        size="lg"
                                       >
-                                        <Calendar className="h-4 w-4" />
-                                        {isSchedulingHearing ? 'Scheduling...' : 'Schedule'}
+                                        <Save className="h-5 w-5" />
+                                        {isSavingAll ? 'Saving All Changes...' : 'Save All Changes'}
                                       </Button>
                                     </div>
+                                    
+                                    <p className="text-xs text-muted-foreground text-center">
+                                      Fill in any combination of the above sections and click "Save All Changes" to apply them at once.
+                                    </p>
                                   </div>
 
-                                  {/* Add Accused Person */}
-                                  <div className="space-y-4">
-                                    <h4 className="font-semibold flex items-center gap-2">
-                                      <UserPlus className="h-4 w-4" />
-                                      Add Accused Person
-                                    </h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                      <div>
-                                        <Label htmlFor="accusedName">Name *</Label>
-                                        <Input
-                                          id="accusedName"
-                                          value={accusedForm.name}
-                                          onChange={(e) => setAccusedForm(prev => ({ ...prev, name: e.target.value }))}
-                                          placeholder="Full name"
-                                        />
-                                      </div>
-                                      <div>
-                                        <Label htmlFor="accusedAddress">Address *</Label>
-                                        <Input
-                                          id="accusedAddress"
-                                          value={accusedForm.address}
-                                          onChange={(e) => setAccusedForm(prev => ({ ...prev, address: e.target.value }))}
-                                          placeholder="Full address"
-                                        />
-                                      </div>
-                                      <div>
-                                        <Label htmlFor="accusedPhone">Phone</Label>
-                                        <Input
-                                          id="accusedPhone"
-                                          value={accusedForm.phone}
-                                          onChange={(e) => setAccusedForm(prev => ({ ...prev, phone: e.target.value }))}
-                                          placeholder="Phone number"
-                                        />
-                                      </div>
-                                      <div>
-                                        <Label htmlFor="accusedEmail">Email</Label>
-                                        <Input
-                                          id="accusedEmail"
-                                          type="email"
-                                          value={accusedForm.email}
-                                          onChange={(e) => setAccusedForm(prev => ({ ...prev, email: e.target.value }))}
-                                          placeholder="Email address"
-                                        />
-                                      </div>
-                                      <div>
-                                        <Label htmlFor="accusedNID">NID</Label>
-                                        <Input
-                                          id="accusedNID"
-                                          value={accusedForm.nid}
-                                          onChange={(e) => setAccusedForm(prev => ({ ...prev, nid: e.target.value }))}
-                                          placeholder="National ID"
-                                        />
-                                      </div>
-                                      <div>
-                                        <Label htmlFor="accusedAge">Age</Label>
-                                        <Input
-                                          id="accusedAge"
-                                          type="number"
-                                          value={accusedForm.age}
-                                          onChange={(e) => setAccusedForm(prev => ({ ...prev, age: e.target.value }))}
-                                          placeholder="Age"
-                                        />
-                                      </div>
-                                      <div>
-                                        <Label htmlFor="accusedGender">Gender</Label>
-                                        <Select value={accusedForm.gender} onValueChange={(value) => setAccusedForm(prev => ({ ...prev, gender: value }))}>
-                                          <SelectTrigger>
-                                            <SelectValue placeholder="Select gender" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="MALE">Male</SelectItem>
-                                            <SelectItem value="FEMALE">Female</SelectItem>
-                                            <SelectItem value="OTHER">Other</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                      <div>
-                                        <Label htmlFor="accusedOccupation">Occupation</Label>
-                                        <Input
-                                          id="accusedOccupation"
-                                          value={accusedForm.occupation}
-                                          onChange={(e) => setAccusedForm(prev => ({ ...prev, occupation: e.target.value }))}
-                                          placeholder="Occupation"
-                                        />
-                                      </div>
-                                    </div>
-                                    <div>
-                                      <Label htmlFor="accusedRelationship">Relationship to Complainant</Label>
-                                      <Input
-                                        id="accusedRelationship"
-                                        value={accusedForm.relationshipToComplainant}
-                                        onChange={(e) => setAccusedForm(prev => ({ ...prev, relationshipToComplainant: e.target.value }))}
-                                        placeholder="e.g., neighbor, colleague, relative"
-                                      />
-                                    </div>
-                                    <Button 
-                                      onClick={() => handleAddAccused(selectedCase._id)}
-                                      disabled={isAddingAccused || !accusedForm.name || !accusedForm.address}
-                                      className="flex items-center gap-2"
-                                    >
-                                      <UserPlus className="h-4 w-4" />
-                                      {isAddingAccused ? 'Adding...' : 'Add Accused Person'}
-                                    </Button>
-                                  </div>
-
-                                  {/* Attach Documents */}
-                                  <div className="space-y-4">
-                                    <h4 className="font-semibold flex items-center gap-2">
-                                      <Upload className="h-4 w-4" />
-                                      Attach Documents
-                                    </h4>
-                                    <div className="space-y-4">
-                                      <div>
-                                        <Label htmlFor="documentType">Document Type *</Label>
-                                        <Select value={documentType} onValueChange={setDocumentType}>
-                                          <SelectTrigger>
-                                            <SelectValue placeholder="Select document type" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            <SelectItem value="ORDER">Court Order</SelectItem>
-                                            <SelectItem value="SUMMON">Summon</SelectItem>
-                                            <SelectItem value="NOTICE">Notice</SelectItem>
-                                            <SelectItem value="JUDGMENT">Judgment</SelectItem>
-                                            <SelectItem value="OTHER">Other</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                      </div>
-                                      <div>
-                                        <Label htmlFor="documentDescription">Description</Label>
-                                        <Textarea
-                                          id="documentDescription"
-                                          value={documentDescription}
-                                          onChange={(e) => setDocumentDescription(e.target.value)}
-                                          placeholder="Brief description of the document(s)"
-                                          rows={3}
-                                        />
-                                      </div>
-                                      <div>
-                                        <Label htmlFor="documents">Select Files *</Label>
-                                        <Input
-                                          id="documents"
-                                          type="file"
-                                          multiple
-                                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                          onChange={(e) => setSelectedFiles(e.target.files)}
-                                          className="cursor-pointer"
-                                        />
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                          Supported formats: PDF, DOC, DOCX, JPG, JPEG, PNG (Max 5 files)
-                                        </p>
-                                      </div>
-                                      <Button 
-                                        onClick={() => handleUploadDocuments(selectedCase._id)}
-                                        disabled={isUploadingDocuments || !documentType || !selectedFiles}
-                                        className="flex items-center gap-2"
-                                      >
-                                        <Upload className="h-4 w-4" />
-                                        {isUploadingDocuments ? 'Uploading...' : 'Upload Documents'}
-                                      </Button>
-                                    </div>
-                                  </div>
-
-                                  {/* Close Case */}
-                                  <div className="space-y-4">
-                                    <h4 className="font-semibold flex items-center gap-2">
+                                  {/* Close Case - Separate Section */}
+                                  <div className="space-y-4 p-4 border border-destructive/20 rounded-lg bg-destructive/5">
+                                    <h4 className="font-semibold flex items-center gap-2 text-destructive">
                                       <Gavel className="h-4 w-4" />
                                       Close Case with Verdict
                                     </h4>
@@ -1127,6 +1325,10 @@ export const JudgeCases = () => {
                                   </div>
                                 </div>
                               )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center py-8">
+                              <p className="text-sm text-muted-foreground">No case selected</p>
                             </div>
                           )}
                         </DialogContent>

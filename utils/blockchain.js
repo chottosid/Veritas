@@ -18,7 +18,8 @@ let abi = null;
 let contractAddress = process.env.CONTRACT_ADDRESS || "";
 const TEST_MODE =
   String(process.env.BLOCKCHAIN_TEST_MODE).toLowerCase() === "true" ||
-  String(process.env.NODE_ENV).toLowerCase() === "test";
+  String(process.env.NODE_ENV).toLowerCase() === "test" ||
+  !process.env.BLOCKCHAIN_TEST_MODE; // Treat undefined as test mode
 
 function loadAbi() {
   try {
@@ -41,10 +42,10 @@ function initContract() {
       contract = null;
       return;
     }
-    if (!process.env.AMOY_RPC_URL || !process.env.PRIVATE_KEY) return;
+    if (!process.env.CELO_SEPOLIA_RPC_URL || !process.env.PRIVATE_KEY) return;
     if (!abi) loadAbi();
     if (!abi) return;
-    provider = new ethers.JsonRpcProvider(process.env.AMOY_RPC_URL);
+    provider = new ethers.JsonRpcProvider(process.env.CELO_SEPOLIA_RPC_URL);
     wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
     if (!contractAddress) {
       // Try reading address persisted by deploy script
@@ -411,7 +412,7 @@ export async function getBlockchainStats() {
     return {
       ok: true,
       data: {
-        network: "Polygon Amoy Testnet",
+        network: "Celo Sepolia Testnet",
         blockNumber,
         gasPrice: gasPrice.gasPrice?.toString() || "0",
         connected: true,

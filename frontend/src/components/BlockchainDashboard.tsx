@@ -7,15 +7,15 @@ import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Activity, 
-  Shield, 
-  CheckCircle, 
   XCircle, 
   Clock, 
   Database, 
   Network, 
   Hash,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  CheckCircle,
+  Shield
 } from 'lucide-react';
 import { api } from '@/lib/api';
 
@@ -46,6 +46,7 @@ const BlockchainDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
   const [showAllTransactions, setShowAllTransactions] = useState(false);
+  const [syncJobStatus, setSyncJobStatus] = useState<any>(null);
 
   const fetchBlockchainStatus = async () => {
     try {
@@ -71,8 +72,17 @@ const BlockchainDashboard: React.FC = () => {
     }
   };
 
+  const fetchSyncJobStatus = async () => {
+    try {
+      const response = await api.get('/blockchain/sync/status');
+      setSyncJobStatus(response.data.data);
+    } catch (err) {
+      console.error('Sync job status fetch error:', err);
+    }
+  };
+
   const refreshData = async () => {
-    await Promise.all([fetchBlockchainStatus(), fetchRecentTransactions()]);
+    await Promise.all([fetchBlockchainStatus(), fetchRecentTransactions(), fetchSyncJobStatus()]);
     setLastUpdate(new Date());
   };
 
@@ -92,6 +102,24 @@ const BlockchainDashboard: React.FC = () => {
     // Open blockchain explorer in new tab
     const explorerUrl = 'https://www.oklink.com/amoy';
     window.open(explorerUrl, '_blank');
+  };
+
+
+  const handleTriggerSync = async () => {
+    try {
+      const response = await api.post('/blockchain/sync/trigger');
+      
+      if (response.data.success) {
+        // Refresh the data to show updated transaction statuses
+        await refreshData();
+        alert('Blockchain sync triggered successfully!');
+      } else {
+        alert('Failed to trigger sync: ' + response.data.message);
+      }
+    } catch (error: any) {
+      console.error('Error triggering sync:', error);
+      alert('Error triggering sync: ' + (error.response?.data?.message || error.message));
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -170,11 +198,63 @@ const BlockchainDashboard: React.FC = () => {
             Real-time blockchain status and transaction verification
           </p>
         </div>
-        <Button onClick={refreshData} variant="outline" size="sm">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={refreshData} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+          <Button 
+            onClick={handleTriggerSync} 
+            variant="outline" 
+            size="sm"
+          >
+            <Activity className="h-4 w-4 mr-2" />
+            Trigger Sync
+          </Button>
+        </div>
       </div>
+
+      {/* Sync Job Status */}
+      {syncJobStatus && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5" />
+              Blockchain Sync Job
+            </CardTitle>
+            <CardDescription>
+              Automatic synchronization between database and blockchain
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">{syncJobStatus.totalPending || 0}</div>
+                <div className="text-sm text-muted-foreground">Pending</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">{syncJobStatus.totalConfirmed || 0}</div>
+                <div className="text-sm text-muted-foreground">Confirmed</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-red-600">{syncJobStatus.totalFailed || 0}</div>
+                <div className="text-sm text-muted-foreground">Failed</div>
+              </div>
+              <div className="text-center">
+                <div className={`text-2xl font-bold ${syncJobStatus.jobStatus?.isRunning ? 'text-green-600' : 'text-gray-600'}`}>
+                  {syncJobStatus.jobStatus?.isRunning ? 'Running' : 'Stopped'}
+                </div>
+                <div className="text-sm text-muted-foreground">Status</div>
+              </div>
+            </div>
+            {syncJobStatus.jobStatus?.isRunning && (
+              <div className="mt-4 text-sm text-muted-foreground">
+                Next sync in: {Math.round((syncJobStatus.jobStatus.intervalMs || 30000) / 1000)}s
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Status Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

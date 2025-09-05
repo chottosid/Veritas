@@ -180,14 +180,24 @@ const CaseTransparencyPortal: React.FC = () => {
   };
 
   const getTimeAgo = (timestamp: string | number) => {
-    const now = new Date();
-    const time = typeof timestamp === 'number' ? new Date(timestamp * 1000) : new Date(timestamp);
-    const diffInSeconds = Math.floor((now.getTime() - time.getTime()) / 1000);
-    
-    if (diffInSeconds < 60) return `${diffInSeconds}s ago`;
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-    return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    try {
+      if (!timestamp) return 'Unknown time';
+      
+      const now = new Date();
+      const time = typeof timestamp === 'number' ? new Date(timestamp * 1000) : new Date(timestamp);
+      
+      // Check if the date is valid
+      if (isNaN(time.getTime())) return 'Invalid date';
+      
+      const diffInSeconds = Math.floor((now.getTime() - time.getTime()) / 1000);
+      
+      if (diffInSeconds < 60) return `${diffInSeconds}s ago`;
+      if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+      if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+      return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    } catch (error) {
+      return 'Unknown time';
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -203,9 +213,12 @@ const CaseTransparencyPortal: React.FC = () => {
     }
   };
 
-  const getUpdateTypeColor = (type: string) => {
+  const getUpdateTypeColor = (type: string | undefined) => {
+    if (!type) return 'bg-gray-100 text-gray-800';
+    
     switch (type.toUpperCase()) {
       case 'STATUS_CHANGE':
+      case 'STATUS_CHANGED':
         return 'bg-blue-100 text-blue-800';
       case 'EVIDENCE_SUBMITTED':
         return 'bg-green-100 text-green-800';
@@ -213,6 +226,12 @@ const CaseTransparencyPortal: React.FC = () => {
         return 'bg-purple-100 text-purple-800';
       case 'JUDGMENT_PASSED':
         return 'bg-orange-100 text-orange-800';
+      case 'DOCUMENT_FILED':
+        return 'bg-indigo-100 text-indigo-800';
+      case 'CASE_CREATED':
+        return 'bg-emerald-100 text-emerald-800';
+      case 'CASE_UPDATE':
+        return 'bg-cyan-100 text-cyan-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -485,13 +504,13 @@ const CaseTransparencyPortal: React.FC = () => {
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
                                 <Badge variant="outline" className={getUpdateTypeColor(update.type)}>
-                                  {update.type.replace('_', ' ')}
+                                  {update.type ? update.type.replace('_', ' ') : 'UPDATE'}
                                 </Badge>
                                 <span className="text-xs text-muted-foreground">
-                                  {getTimeAgo(update.timestamp)}
+                                  {update.timestamp ? getTimeAgo(update.timestamp) : 'Unknown time'}
                                 </span>
                               </div>
-                              <p className="text-sm font-medium">{update.description}</p>
+                              <p className="text-sm font-medium">{update.description || 'No description available'}</p>
                               {update.metadata && (
                                 <p className="text-xs text-muted-foreground mt-1">{update.metadata}</p>
                               )}

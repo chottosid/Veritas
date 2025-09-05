@@ -10,10 +10,10 @@ const __dirname = dirname(__filename);
 async function main() {
   // Load env from Backend/.env
   dotenv.config({ path: resolve(__dirname, "../../.env") });
-  const rpcUrl = process.env.AMOY_RPC_URL;
+  const rpcUrl = process.env.CELO_SEPOLIA_RPC_URL;
   const privateKey = process.env.PRIVATE_KEY;
   if (!rpcUrl || !privateKey) {
-    throw new Error("Missing AMOY_RPC_URL or PRIVATE_KEY in environment");
+    throw new Error("Missing CELO_SEPOLIA_RPC_URL or PRIVATE_KEY in environment");
   }
 
   const provider = new ethers.JsonRpcProvider(rpcUrl);
