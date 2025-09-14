@@ -23,27 +23,27 @@ export const Footer = () => {
             <h3 className="font-semibold mb-4">Services</h3>
             <ul className="space-y-2 text-sm text-tertiary-foreground/80">
               <li>
-                <Link to="/complaints" className="hover:text-primary transition-colors flex items-center gap-2">
+                <Link to="/register" className="hover:text-primary transition-colors flex items-center gap-2">
                   <Shield className="h-3 w-3" />
-                  File Complaints
+                  Get Started
                 </Link>
               </li>
               <li>
-                <Link to="/cases" className="hover:text-primary transition-colors flex items-center gap-2">
+                <Link to="/login" className="hover:text-primary transition-colors flex items-center gap-2">
                   <Gavel className="h-3 w-3" />
-                  Track Cases
+                  Login
                 </Link>
               </li>
               <li>
-                <Link to="/lawyers" className="hover:text-primary transition-colors flex items-center gap-2">
+                <Link to="/register?role=lawyer" className="hover:text-primary transition-colors flex items-center gap-2">
                   <Users className="h-3 w-3" />
-                  Find Lawyers
+                  Join as Lawyer
                 </Link>
               </li>
               <li>
-                <Link to="/about" className="hover:text-primary transition-colors flex items-center gap-2">
+                <Link to="/register?role=police" className="hover:text-primary transition-colors flex items-center gap-2">
                   <Scale className="h-3 w-3" />
-                  About Justice
+                  Join as Police
                 </Link>
               </li>
             </ul>
@@ -54,24 +54,24 @@ export const Footer = () => {
             <h3 className="font-semibold mb-4">Legal</h3>
             <ul className="space-y-2 text-sm text-tertiary-foreground/80">
               <li>
-                <Link to="/privacy" className="hover:text-primary transition-colors">
+                <span className="text-tertiary-foreground/60">
                   Privacy Policy
-                </Link>
+                </span>
               </li>
               <li>
-                <Link to="/terms" className="hover:text-primary transition-colors">
+                <span className="text-tertiary-foreground/60">
                   Terms of Service
-                </Link>
+                </span>
               </li>
               <li>
-                <Link to="/compliance" className="hover:text-primary transition-colors">
+                <span className="text-tertiary-foreground/60">
                   Compliance
-                </Link>
+                </span>
               </li>
               <li>
-                <Link to="/security" className="hover:text-primary transition-colors">
+                <span className="text-tertiary-foreground/60">
                   Security
-                </Link>
+                </span>
               </li>
             </ul>
           </div>
@@ -82,7 +82,7 @@ export const Footer = () => {
             <ul className="space-y-2 text-sm text-tertiary-foreground/80">
               <li>Emergency: 999</li>
               <li>Support: 1247</li>
-              <li>Email: support@justicenexus.gov</li>
+              <li>Email: support@veritas.gov</li>
               <li>
                 <Link to="/contact" className="hover:text-primary transition-colors">
                   Contact Form
@@ -94,7 +94,7 @@ export const Footer = () => {
 
         <div className="border-t border-tertiary-foreground/20 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-tertiary-foreground/60">
           <p>&copy; 2025 Veritas. All rights reserved.</p>
-          <p>Powered by blockchain technology for transparent justice.</p>
+          <p>Powered by technology for fair justice.</p>
         </div>
       </div>
     </footer>

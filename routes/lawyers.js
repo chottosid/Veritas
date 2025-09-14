@@ -15,6 +15,7 @@ import { authenticateToken } from "../middleware/auth.js";
 import { uploadToIPFS } from "../utils/ipfs.js";
 import { appendCaseProceeding } from "../utils/caseProceedings.js";
 import { verifyOTP } from "../utils/emailService.js";
+import { checkEmailUniqueness, checkPhoneUniqueness, getRoleDisplayName } from "../utils/userValidation.js";
 
 const router = express.Router();
 
@@ -49,16 +50,33 @@ router.post("/register", async (req, res) => {
       });
     }
 
-    // Check if lawyer already exists
-    const existingLawyer = await Lawyer.findOne({
-      $or: [{ bid }, { phone: phone || null }, { email: email || null }],
-    });
-
+    // Check if lawyer already exists (BID check)
+    const existingLawyer = await Lawyer.findOne({ bid });
     if (existingLawyer) {
       return res.status(400).json({
         success: false,
-        message: "Lawyer already exists with this BID, phone, or email",
+        message: "Lawyer already exists with this BID",
       });
+    }
+
+    // Check email uniqueness across all roles
+    const emailCheck = await checkEmailUniqueness(email);
+    if (!emailCheck.isUnique) {
+      return res.status(400).json({
+        success: false,
+        message: `Email is already registered as a ${getRoleDisplayName(emailCheck.role)}. Please use a different email address.`,
+      });
+    }
+
+    // Check phone uniqueness across all roles
+    if (phone) {
+      const phoneCheck = await checkPhoneUniqueness(phone);
+      if (!phoneCheck.isUnique) {
+        return res.status(400).json({
+          success: false,
+          message: `Phone number is already registered as a ${getRoleDisplayName(phoneCheck.role)}. Please use a different phone number.`,
+        });
+      }
     }
 
     // OTP verification for lawyer registration

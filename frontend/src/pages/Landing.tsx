@@ -10,48 +10,48 @@ export const Landing = () => {
     {
       icon: FileText,
       title: 'File Complaints',
-      description: 'Submit complaints digitally with complete documentation and evidence management.',
+      description: 'Submit your complaints online with documents and evidence.',
       color: 'text-primary'
     },
     {
       icon: Shield,
-      title: 'Track Progress',
-      description: 'Real-time updates on your case status from complaint to verdict.',
+      title: 'Track Your Case',
+      description: 'See updates on your case status from start to finish.',
       color: 'text-secondary'
     },
     {
       icon: Scale,
-      title: 'Transparent Justice',
-      description: 'Blockchain-powered transparency ensuring accountability at every step.',
+      title: 'Fair Process',
+      description: 'Transparent system that ensures everyone is treated fairly.',
       color: 'text-warning'
     },
     {
       icon: Users,
-      title: 'Connect with Lawyers',
-      description: 'Find and connect with qualified legal professionals for your case.',
+      title: 'Find Lawyers',
+      description: 'Connect with lawyers who can help with your case.',
       color: 'text-success'
     },
     {
       icon: Gavel,
-      title: 'Digital Hearings',
-      description: 'Schedule and attend hearings with digital integration and notifications.',
+      title: 'Court Hearings',
+      description: 'Schedule and attend court hearings easily.',
       color: 'text-tertiary'
     },
     {
       icon: Clock,
-      title: 'Efficient Process',
-      description: 'Streamlined workflow from police investigation to court proceedings.',
+      title: 'Faster Process',
+      description: 'Complete your case faster with our streamlined system.',
       color: 'text-danger'
     }
   ];
 
   const benefits = [
-    'Digital complaint filing with evidence upload',
-    'Real-time case tracking and notifications',
-    'Transparent investigation process',
-    'Direct lawyer communication',
-    'Blockchain-secured document storage',
-    'Automated hearing scheduling'
+    'File complaints online with documents',
+    'Get updates on your case progress',
+    'Fair and transparent process',
+    'Talk directly with lawyers',
+    'Secure document storage',
+    'Easy hearing scheduling'
   ];
 
   return (
@@ -71,11 +71,11 @@ export const Landing = () => {
             <h1 className="text-4xl lg:text-6xl font-bold leading-tight">
               Justice Made
               <span className="block bg-gradient-to-r from-yellow-300 to-orange-300 bg-clip-text text-transparent">
-                Digital & Transparent
+                Simple & Fair
               </span>
             </h1>
             <p className="text-xl lg:text-2xl text-white/90 max-w-2xl mx-auto leading-relaxed">
-              Revolutionary blockchain-powered justice system connecting citizens, police, lawyers, and courts in one unified platform.
+              A simple platform that connects citizens, police, lawyers, and courts to make justice accessible to everyone.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Button size="lg" className="btn-hero text-lg px-8 py-4 shadow-glow" asChild>
@@ -99,10 +99,10 @@ export const Landing = () => {
         <div className="container px-4">
           <div className="text-center mb-16">
             <h2 className="text-3xl lg:text-4xl font-bold mb-4">
-              Complete Justice Ecosystem
+              How It Works
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              From complaint filing to verdict delivery, experience justice that's transparent, efficient, and accessible to all.
+              From filing a complaint to getting a decision, our system makes justice simple and fair for everyone.
             </p>
           </div>
           
@@ -132,10 +132,10 @@ export const Landing = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
               <h2 className="text-3xl lg:text-4xl font-bold mb-6">
-                Why Choose Digital Justice?
+                Why Choose Our System?
               </h2>
               <p className="text-lg text-muted-foreground mb-8">
-                Our platform revolutionizes traditional legal processes with cutting-edge technology, ensuring justice is swift, transparent, and accessible to every citizen.
+                Our platform makes the legal process faster, clearer, and easier for everyone involved.
               </p>
               <div className="space-y-4">
                 {benefits.map((benefit, index) => (
@@ -173,10 +173,10 @@ export const Landing = () => {
         <div className="container px-4">
           <div className="text-center mb-16">
             <h2 className="text-3xl lg:text-4xl font-bold mb-4">
-              Access For Every Role
+              For Everyone
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Tailored interfaces and features for each stakeholder in the justice system.
+              Different tools and features for citizens, police, judges, and lawyers.
             </p>
           </div>
           
@@ -190,7 +190,7 @@ export const Landing = () => {
                 <Badge className="w-fit mx-auto mb-4 bg-orange-100 text-orange-800 font-semibold px-4 py-2 rounded-full border border-orange-200">Citizens</Badge>
                 <CardTitle className="text-xl font-bold text-slate-800">For Citizens</CardTitle>
                 <CardDescription className="text-sm leading-relaxed mt-3 text-slate-600">
-                  File complaints, track cases, find lawyers, and stay updated on proceedings.
+                  File complaints, track your case, find lawyers, and get updates.
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-4 pb-6 px-6">
@@ -209,7 +209,7 @@ export const Landing = () => {
                 <Badge className="w-fit mx-auto mb-4 bg-blue-100 text-blue-800 font-semibold px-4 py-2 rounded-full border border-blue-200">Law Enforcement</Badge>
                 <CardTitle className="text-xl font-bold text-slate-800">For Police</CardTitle>
                 <CardDescription className="text-sm leading-relaxed mt-3 text-slate-600">
-                  Manage investigations, file FIRs, submit evidence, and coordinate with courts.
+                  Handle investigations, file reports, submit evidence, and work with courts.
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-4 pb-6 px-6">
@@ -228,7 +228,7 @@ export const Landing = () => {
                 <Badge className="w-fit mx-auto mb-4 bg-teal-100 text-teal-800 font-semibold px-4 py-2 rounded-full border border-teal-200">Judiciary</Badge>
                 <CardTitle className="text-xl font-bold text-slate-800">For Judges</CardTitle>
                 <CardDescription className="text-sm leading-relaxed mt-3 text-slate-600">
-                  Process FIRs, create cases, schedule hearings, and deliver verdicts.
+                  Review cases, schedule hearings, and make decisions.
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-4 pb-6 px-6">
@@ -247,7 +247,7 @@ export const Landing = () => {
                 <Badge className="w-fit mx-auto mb-4 bg-emerald-100 text-emerald-800 font-semibold px-4 py-2 rounded-full border border-emerald-200">Legal Profession</Badge>
                 <CardTitle className="text-xl font-bold text-slate-800">For Lawyers</CardTitle>
                 <CardDescription className="text-sm leading-relaxed mt-3 text-slate-600">
-                  Represent clients, submit documents, access case files, and communicate with all parties.
+                  Help clients, submit documents, access case files, and talk with everyone involved.
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-4 pb-6 px-6">
@@ -264,10 +264,10 @@ export const Landing = () => {
       <section className="py-20 bg-gradient-hero text-white">
         <div className="container px-4 text-center">
           <h2 className="text-3xl lg:text-4xl font-bold mb-6">
-            Ready to Experience Digital Justice?
+            Ready to Get Started?
           </h2>
           <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-            Join thousands of citizens, legal professionals, and law enforcement officers using our platform for transparent and efficient justice.
+            Join citizens, legal professionals, and law enforcement officers using our platform for fair and efficient justice.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" className="btn-hero text-lg px-8 py-4 shadow-glow" asChild>
@@ -277,8 +277,8 @@ export const Landing = () => {
               </Link>
             </Button>
             <Button size="lg" variant="outline" className="btn-outline-white text-lg px-8 py-4 backdrop-blur-sm" asChild>
-              <Link to="/contact">
-                Contact Support
+              <Link to="/login">
+                Login
               </Link>
             </Button>
           </div>

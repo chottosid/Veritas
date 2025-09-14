@@ -33,6 +33,7 @@ import LawyerDashboard from "./pages/LawyerDashboard";
 import LawyerRequests from "./pages/LawyerRequests";
 import LawyerCases from "./pages/LawyerCases";
 import BlockchainTransparency from "./pages/BlockchainTransparency";
+import { Contact } from "./pages/Contact";
 
 const queryClient = new QueryClient();
 
@@ -268,6 +269,7 @@ const App = () => (
               </ProtectedRoute>
             } 
           />
+          <Route path="/contact" element={<Contact />} />
        
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
