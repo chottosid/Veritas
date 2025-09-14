@@ -27,6 +27,9 @@ app.use(corsMiddleware);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve static files from frontend dist
+app.use(express.static('frontend/dist'));
+
 // Simple health check endpoint
 app.get("/health", (req, res) => {
   const dbConnected = isDBConnected();
@@ -60,6 +63,11 @@ app.use("/api/judges", judgeRoutes);
 app.use("/api/lawyers", lawyerRoutes);
 app.use("/api/blockchain", blockchainRoutes);
 app.use("/api/otp", otpRoutes);
+
+// Catch-all handler: send back React's index.html file for client-side routing
+app.get('*', (req, res) => {
+  res.sendFile('index.html', { root: 'frontend/dist' });
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
