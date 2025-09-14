@@ -25,6 +25,7 @@ jobs:
         tags: veritas-justice:latest
         build-args: |
           VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}
+          VITE_WS_URL=${{ secrets.VITE_API_BASE_URL }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
         
@@ -49,6 +50,7 @@ jobs:
           # Build new image with environment variables
           docker build \
             --build-arg VITE_API_BASE_URL="${{ secrets.VITE_API_BASE_URL }}" \
+            --build-arg VITE_WS_URL="${{ secrets.VITE_API_BASE_URL }}" \
             -t veritas-justice:latest .
           
           # Run new container with environment variables

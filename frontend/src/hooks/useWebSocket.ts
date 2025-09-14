@@ -55,7 +55,8 @@ export const useWebSocket = (): UseWebSocketReturn => {
     }
 
     // Create new socket connection
-    const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:3001', {
+    const socket = io(import.meta.env.VITE_API_BASE_URL || 
+      (typeof window !== 'undefined' ? window.location.protocol + '//' + window.location.host : 'http://localhost:3001'), {
       auth: {
         token: token
       },

@@ -16,6 +16,8 @@ COPY frontend/ ./
 # Set environment variables for frontend build
 ARG VITE_API_BASE_URL
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+ARG VITE_WS_URL
+ENV VITE_WS_URL=$VITE_WS_URL
 
 # Build frontend with production environment
 RUN npm run build
