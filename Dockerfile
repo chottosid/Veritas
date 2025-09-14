@@ -41,7 +41,7 @@ COPY --chown=nodejs:nodejs . .
 # Copy built frontend from builder stage
 COPY --from=frontend-builder --chown=nodejs:nodejs /app/frontend/dist ./frontend/dist
 
-# Copy blockchain artifacts
+# Copy blockchain artifacts (will be compiled in build stage)
 COPY --chown=nodejs:nodejs blockchain/artifacts ./blockchain/artifacts
 COPY --chown=nodejs:nodejs blockchain/deployments ./blockchain/deployments
 

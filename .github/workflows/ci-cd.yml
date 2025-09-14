@@ -60,6 +60,22 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'npm'
+        
+    - name: Install blockchain dependencies
+      run: |
+        cd blockchain
+        npm ci
+        
+    - name: Compile blockchain contracts
+      run: |
+        cd blockchain
+        npm run compile
+        
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
       
