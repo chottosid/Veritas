@@ -5,7 +5,6 @@ blockchain/node_modules/
 
 # Build outputs
 frontend/dist/
-blockchain/artifacts/
 blockchain/cache/
 
 # Environment files

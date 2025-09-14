@@ -41,9 +41,10 @@ COPY --chown=nodejs:nodejs . .
 # Copy built frontend from builder stage
 COPY --from=frontend-builder --chown=nodejs:nodejs /app/frontend/dist ./frontend/dist
 
-# Copy blockchain artifacts (will be compiled in build stage)
-COPY --chown=nodejs:nodejs blockchain/artifacts ./blockchain/artifacts
-COPY --chown=nodejs:nodejs blockchain/deployments ./blockchain/deployments
+# Create blockchain directories and copy artifacts if they exist
+RUN mkdir -p ./blockchain/artifacts ./blockchain/deployments
+COPY --chown=nodejs:nodejs blockchain/artifacts/ ./blockchain/artifacts/
+COPY --chown=nodejs:nodejs blockchain/deployments/ ./blockchain/deployments/
 
 # Create necessary directories and set permissions
 RUN mkdir -p logs uploads && \
