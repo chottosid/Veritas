@@ -331,7 +331,7 @@ export const FileComplaint = () => {
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
         <div className="mb-8">
-          <Button variant="outline" asChild className="mb-4">
+          <Button variant="outline" asChild className="mb-4 hover:bg-primary/10">
             <Link to="/complaints">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to My Complaints
@@ -339,12 +339,12 @@ export const FileComplaint = () => {
           </Button>
           
           <div>
-            <h1 className="text-3xl font-bold text-slate-800 mb-2">File a New Complaint</h1>
-            <p className="text-slate-600">
+            <h1 className="text-3xl font-bold gradient-text mb-2">File a New Complaint</h1>
+            <p className="text-muted-foreground text-lg">
               Submit your complaint to the authorities for investigation and resolution
             </p>
             {user && (
-              <p className="text-sm text-slate-500 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 Filing as: {user.name} ({user.nid})
               </p>
             )}
@@ -352,14 +352,14 @@ export const FileComplaint = () => {
         </div>
 
         {/* Instructions Card */}
-        <Card className="mb-6 border-0 shadow-lg bg-gradient-to-br from-blue-50 to-indigo-50">
+        <Card className="mb-6 card-friendly bg-gradient-to-br from-primary/5 to-secondary/5">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-blue-800">
+            <CardTitle className="flex items-center gap-2 text-primary">
               <AlertCircle className="h-5 w-5" />
               Important Guidelines
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-blue-700">
+          <CardContent className="text-muted-foreground">
             <ul className="list-disc list-inside space-y-1 text-sm">
               <li>Provide accurate and detailed information about the incident</li>
               <li>Include relevant evidence files (photos, videos, documents)</li>
@@ -373,10 +373,10 @@ export const FileComplaint = () => {
 
         {/* Main Form */}
         <form onSubmit={handleSubmit}>
-          <Card className="border-0 shadow-lg">
+          <Card className="card-friendly">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
+                <FileText className="h-5 w-5 text-primary" />
                 Complaint Details
               </CardTitle>
               <CardDescription>

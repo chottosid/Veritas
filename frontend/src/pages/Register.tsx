@@ -75,12 +75,57 @@ export const Register = () => {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [showOTPVerification, setShowOTPVerification] = useState(false);
   const [otpCode, setOtpCode] = useState('');
+  const [isSendingOTP, setIsSendingOTP] = useState(false);
 
   const config = roleConfig[role];
   const Icon = config.icon;
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const sendOTP = async () => {
+    if (!formData.email) {
+      setError('Email is required to send OTP');
+      return false;
+    }
+
+    setIsSendingOTP(true);
+    setError('');
+
+    try {
+      const response = await api.post('/otp/send', {
+        email: formData.email,
+        type: 'REGISTRATION'
+      });
+
+      if (response.data.success) {
+        toast({
+          title: 'OTP Sent',
+          description: 'A verification code has been sent to your email.',
+        });
+        return true;
+      } else {
+        setError(response.data.message || 'Failed to send OTP');
+        toast({
+          title: 'Failed to Send OTP',
+          description: response.data.message || 'Please try again.',
+          variant: 'destructive',
+        });
+        return false;
+      }
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to send OTP. Please try again.';
+      setError(errorMessage);
+      toast({
+        title: 'Failed to Send OTP',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+      return false;
+    } finally {
+      setIsSendingOTP(false);
+    }
   };
 
   const handleRegister = async (e: React.FormEvent, providedOtp?: string) => {
@@ -100,9 +145,12 @@ export const Register = () => {
       return;
     }
 
-    // For citizen registration, show OTP verification first
-    if (role === 'CITIZEN' && !otpCode && !providedOtp) {
-      setShowOTPVerification(true);
+    // For all registrations, send OTP and show verification first
+    if (!otpCode && !providedOtp) {
+      const otpSent = await sendOTP();
+      if (otpSent) {
+        setShowOTPVerification(true);
+      }
       setIsLoading(false);
       return;
     }
@@ -117,11 +165,12 @@ export const Register = () => {
         password: formData.password
       };
 
-      // Add role-specific fields
+      // Add role-specific fields and OTP for all roles
+      const otpToUse = providedOtp || otpCode;
+      registrationData.otp = otpToUse; // Include the actual OTP code for all roles
+      
       if (role === 'CITIZEN') {
         registrationData.nid = formData.nid;
-        const otpToUse = providedOtp || otpCode;
-        registrationData.otp = otpToUse; // Include the actual OTP code
       } else if (role === 'POLICE') {
         registrationData.pid = formData.pid;
         registrationData.rank = formData.rank;
@@ -163,7 +212,7 @@ export const Register = () => {
 
         toast({
           title: 'Registration Successful',
-          description: `Welcome to Justice Nexus Chain, ${userData.name}!`,
+          description: `Welcome to Veritas, ${userData.name}!`,
         });
 
         navigate('/dashboard');
@@ -202,16 +251,17 @@ export const Register = () => {
             email={formData.email}
             onVerificationSuccess={handleOTPVerificationSuccess}
             onBack={handleOTPBack}
+            type="REGISTRATION"
           />
         ) : (
-          <Card className="w-full max-w-2xl card-elegant">
+          <Card className="w-full max-w-2xl card-friendly">
           <CardHeader className="text-center space-y-4">
-            <div className="mx-auto w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-              <Icon className="h-6 w-6 text-primary" />
+            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-2xl flex items-center justify-center shadow-soft">
+              <Icon className="h-8 w-8 text-primary" />
             </div>
             <div>
               <CardTitle className="text-2xl font-bold">{config.title}</CardTitle>
-              <CardDescription>{config.description}</CardDescription>
+              <CardDescription className="text-base">{config.description}</CardDescription>
             </div>
           </CardHeader>
           

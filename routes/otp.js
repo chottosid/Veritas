@@ -14,6 +14,8 @@ router.post("/send", async (req, res) => {
   try {
     const { email, type = "REGISTRATION" } = req.body;
 
+    console.log(`📧 OTP Send Request: ${email}, Type: ${type}`);
+
     if (!email) {
       return res.status(400).json({
         success: false,
@@ -68,9 +70,11 @@ router.post("/send", async (req, res) => {
     await otpRecord.save();
 
     // Send OTP email
+    console.log(`📤 Sending OTP email to: ${email}, OTP: ${otp}`);
     const emailResult = await sendOTPEmail(email, otp, type);
 
     if (!emailResult.success) {
+      console.error(`❌ Email sending failed: ${emailResult.error}`);
       // Delete the OTP record if email failed
       await OTP.findByIdAndDelete(otpRecord._id);
 
@@ -81,6 +85,7 @@ router.post("/send", async (req, res) => {
       });
     }
 
+    console.log(`✅ Email sent successfully: ${emailResult.messageId}`);
     res.json({
       success: true,
       message: "OTP sent successfully",
@@ -142,6 +147,8 @@ router.post("/verify", async (req, res) => {
 router.post("/resend", async (req, res) => {
   try {
     const { email, type = "REGISTRATION" } = req.body;
+
+    console.log(`🔄 OTP Resend Request: ${email}, Type: ${type}`);
 
     if (!email) {
       return res.status(400).json({

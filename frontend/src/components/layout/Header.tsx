@@ -102,11 +102,11 @@ export const Header = () => {
   const totalUnread = wsUnreadCount;
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 shadow-soft">
       <div className="container flex h-16 items-center justify-between px-4">
         {/* Logo */}
-        <Link to="/" className="flex items-center space-x-2">
-          <img src="/stop.png" alt="OneStop Justice" className="h-8" />
+        <Link to="/" className="flex items-center space-x-2 bounce-hover">
+          <img src="/stop.png" alt="Veritas" className="h-8" />
         </Link>
 
         {/* Desktop Navigation */}
@@ -115,7 +115,7 @@ export const Header = () => {
             <>
               <Link 
                 to={user.role === 'POLICE' ? "/police/dashboard" : user.role === 'JUDGE' ? "/judge/dashboard" : user.role === 'LAWYER' ? "/lawyer/dashboard" : "/dashboard"} 
-                className="text-foreground hover:text-primary transition-colors"
+                className="text-foreground hover:text-primary transition-colors font-medium"
               >
                 Dashboard
               </Link>

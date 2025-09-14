@@ -94,12 +94,15 @@ export default {
 			boxShadow: {
 				elegant: 'var(--shadow-elegant)',
 				'card': 'var(--shadow-card)',
-				glow: 'var(--shadow-glow)'
+				glow: 'var(--shadow-glow)',
+				soft: 'var(--shadow-soft)'
 			},
 			backgroundImage: {
 				'gradient-primary': 'var(--gradient-primary)',
 				'gradient-hero': 'var(--gradient-hero)',
-				'gradient-card': 'var(--gradient-card)'
+				'gradient-card': 'var(--gradient-card)',
+				'gradient-warm': 'var(--gradient-warm)',
+				'gradient-cool': 'var(--gradient-cool)'
 			},
 			transitionTimingFunction: {
 				'smooth': 'cubic-bezier(0.4, 0, 0.2, 1)',

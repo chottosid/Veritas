@@ -1,17 +1,15 @@
-# Sample Hardhat 3 Beta Project (`mocha` and `ethers`)
+# Veritas Blockchain
 
-This project showcases a Hardhat 3 Beta project using `mocha` for tests and the `ethers` library for Ethereum interactions.
-
-To learn more about the Hardhat 3 Beta, please visit the [Getting Started guide](https://hardhat.org/docs/getting-started#getting-started-with-hardhat-3). To share your feedback, join our [Hardhat 3 Beta](https://hardhat.org/hardhat3-beta-telegram-group) Telegram group or [open an issue](https://github.com/NomicFoundation/hardhat/issues/new) in our GitHub issue tracker.
+This is the blockchain component of Veritas, a blockchain-based justice management system. It contains smart contracts for managing justice events and case proceedings.
 
 ## Project Overview
 
-This example project includes:
+This blockchain project includes:
 
-- A simple Hardhat configuration file.
-- Foundry-compatible Solidity unit tests.
-- TypeScript integration tests using `mocha` and ethers.js
-- Examples demonstrating how to connect to different types of networks, including locally simulating OP mainnet.
+- Smart contracts for justice event management
+- Hardhat configuration for development and deployment
+- Deployment scripts for various networks
+- Integration with the main Veritas application
 
 ## Usage
 

@@ -58,27 +58,33 @@ export const Landing = () => {
     <div className="min-h-screen">
       {/* Hero Section */}
       <section className="relative bg-gradient-hero text-white py-20 lg:py-32 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-secondary/20 to-tertiary/20" />
+        <div className="absolute inset-0 bg-gradient-to-br from-secondary/30 to-tertiary/30" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
         <div className="container relative z-10 px-4">
           <div className="max-w-4xl mx-auto text-center space-y-8">
             <div className="flex justify-center mb-6">
-              <img src={logoIcon} alt="Justice" className="h-16 w-16 animate-float" />
+              <div className="relative">
+                <img src={logoIcon} alt="Justice" className="h-20 w-20 animate-float" />
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-full blur-xl animate-pulse"></div>
+              </div>
             </div>
             <h1 className="text-4xl lg:text-6xl font-bold leading-tight">
               Justice Made
-              <span className="block gradient-text">Digital & Transparent</span>
+              <span className="block bg-gradient-to-r from-yellow-300 to-orange-300 bg-clip-text text-transparent">
+                Digital & Transparent
+              </span>
             </h1>
-            <p className="text-xl lg:text-2xl text-white/90 max-w-2xl mx-auto">
+            <p className="text-xl lg:text-2xl text-white/90 max-w-2xl mx-auto leading-relaxed">
               Revolutionary blockchain-powered justice system connecting citizens, police, lawyers, and courts in one unified platform.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Button size="lg" className="btn-hero text-lg px-8 py-4" asChild>
+              <Button size="lg" className="btn-hero text-lg px-8 py-4 shadow-glow" asChild>
                 <Link to="/register">
                   Start Your Case
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
-              <Button size="lg" variant="outline" className="text-black border-black hover:bg-white hover:text-tertiary text-lg px-8 py-4" asChild>
+              <Button size="lg" variant="outline" className="btn-outline-white text-lg px-8 py-4 backdrop-blur-sm" asChild>
                 <Link to="/login">
                   Access Portal
                 </Link>
@@ -102,15 +108,15 @@ export const Landing = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, index) => (
-              <Card key={index} className="card-elegant hover:shadow-elegant transition-all duration-300 group cursor-pointer">
+              <Card key={index} className="card-friendly group cursor-pointer">
                 <CardHeader>
-                  <div className={`w-12 h-12 rounded-lg bg-gradient-to-br from-current/10 to-current/20 flex items-center justify-center mb-4 ${feature.color} group-hover:scale-110 transition-transform`}>
-                    <feature.icon className="h-6 w-6" />
+                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br from-current/20 to-current/30 flex items-center justify-center mb-4 ${feature.color} group-hover:scale-110 transition-transform shadow-soft`}>
+                    <feature.icon className="h-7 w-7" />
                   </div>
-                  <CardTitle className="text-xl">{feature.title}</CardTitle>
+                  <CardTitle className="text-xl font-bold">{feature.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <CardDescription className="text-base">
+                  <CardDescription className="text-base leading-relaxed">
                     {feature.description}
                   </CardDescription>
                 </CardContent>
@@ -141,21 +147,21 @@ export const Landing = () => {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <Card className="card-elegant p-6 text-center">
-                <div className="text-3xl font-bold text-primary mb-2">10K+</div>
-                <div className="text-muted-foreground">Cases Resolved</div>
+              <Card className="card-friendly p-6 text-center bounce-hover">
+                <div className="text-3xl font-bold gradient-text-warm mb-2">10K+</div>
+                <div className="text-muted-foreground font-medium">Cases Resolved</div>
               </Card>
-              <Card className="card-elegant p-6 text-center">
-                <div className="text-3xl font-bold text-secondary mb-2">24/7</div>
-                <div className="text-muted-foreground">System Availability</div>
+              <Card className="card-friendly p-6 text-center bounce-hover">
+                <div className="text-3xl font-bold gradient-text-cool mb-2">24/7</div>
+                <div className="text-muted-foreground font-medium">System Availability</div>
               </Card>
-              <Card className="card-elegant p-6 text-center">
+              <Card className="card-friendly p-6 text-center bounce-hover">
                 <div className="text-3xl font-bold text-warning mb-2">500+</div>
-                <div className="text-muted-foreground">Legal Professionals</div>
+                <div className="text-muted-foreground font-medium">Legal Professionals</div>
               </Card>
-              <Card className="card-elegant p-6 text-center">
+              <Card className="card-friendly p-6 text-center bounce-hover">
                 <div className="text-3xl font-bold text-success mb-2">99.9%</div>
-                <div className="text-muted-foreground">Data Security</div>
+                <div className="text-muted-foreground font-medium">Data Security</div>
               </Card>
             </div>
           </div>
@@ -175,48 +181,48 @@ export const Landing = () => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8 max-w-7xl mx-auto">
-            <Card className="relative overflow-hidden bg-white border-0 shadow-xl hover:shadow-2xl transition-all duration-500 group hover:scale-105 transform perspective-1000 hover:rotate-y-2">
-              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-yellow-400 to-yellow-600"></div>
-              <CardHeader className="text-center pb-4 pt-6 bg-gradient-to-br from-slate-50 to-gray-100">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center shadow-lg">
+            <Card className="relative overflow-hidden bg-white border-0 shadow-soft hover:shadow-card transition-all duration-500 group hover:scale-105 transform">
+              <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-r from-orange-400 to-yellow-500 rounded-t-2xl"></div>
+              <CardHeader className="text-center pb-4 pt-8 bg-gradient-to-br from-orange-50 to-yellow-50">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-orange-400 to-yellow-500 rounded-2xl flex items-center justify-center shadow-soft">
                   <Users className="h-8 w-8 text-white" />
                 </div>
-                <Badge className="w-fit mx-auto mb-4 bg-yellow-100 text-yellow-800 font-semibold px-4 py-2 rounded-full border border-yellow-200">Citizens</Badge>
+                <Badge className="w-fit mx-auto mb-4 bg-orange-100 text-orange-800 font-semibold px-4 py-2 rounded-full border border-orange-200">Citizens</Badge>
                 <CardTitle className="text-xl font-bold text-slate-800">For Citizens</CardTitle>
                 <CardDescription className="text-sm leading-relaxed mt-3 text-slate-600">
                   File complaints, track cases, find lawyers, and stay updated on proceedings.
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-4 pb-6 px-6">
-                <Button className="w-full bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700 text-white font-semibold py-3 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl" asChild>
+                <Button className="w-full btn-warm font-semibold py-3" asChild>
                   <Link to="/register?role=citizen">Register as Citizen</Link>
                 </Button>
               </CardContent>
             </Card>
 
-            <Card className="relative overflow-hidden bg-white border-0 shadow-xl hover:shadow-2xl transition-all duration-500 group hover:scale-105 transform perspective-1000 hover:rotate-y-2">
-              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-slate-600 to-slate-800"></div>
-              <CardHeader className="text-center pb-4 pt-6 bg-gradient-to-br from-slate-50 to-gray-100">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-slate-600 to-slate-800 rounded-full flex items-center justify-center shadow-lg">
+            <Card className="relative overflow-hidden bg-white border-0 shadow-soft hover:shadow-card transition-all duration-500 group hover:scale-105 transform">
+              <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-t-2xl"></div>
+              <CardHeader className="text-center pb-4 pt-8 bg-gradient-to-br from-blue-50 to-indigo-50">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-soft">
                   <Shield className="h-8 w-8 text-white" />
                 </div>
-                <Badge className="w-fit mx-auto mb-4 bg-slate-100 text-slate-800 font-semibold px-4 py-2 rounded-full border border-slate-200">Law Enforcement</Badge>
+                <Badge className="w-fit mx-auto mb-4 bg-blue-100 text-blue-800 font-semibold px-4 py-2 rounded-full border border-blue-200">Law Enforcement</Badge>
                 <CardTitle className="text-xl font-bold text-slate-800">For Police</CardTitle>
                 <CardDescription className="text-sm leading-relaxed mt-3 text-slate-600">
                   Manage investigations, file FIRs, submit evidence, and coordinate with courts.
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-4 pb-6 px-6">
-                <Button className="w-full bg-gradient-to-r from-slate-600 to-slate-800 hover:from-slate-700 hover:to-slate-900 text-white font-semibold py-3 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl" asChild>
+                <Button className="w-full btn-cool font-semibold py-3" asChild>
                   <Link to="/register?role=police">Register as Officer</Link>
                 </Button>
               </CardContent>
             </Card>
 
-            <Card className="relative overflow-hidden bg-white border-0 shadow-xl hover:shadow-2xl transition-all duration-500 group hover:scale-105 transform perspective-1000 hover:rotate-y-2">
-              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-teal-500 to-teal-700"></div>
-              <CardHeader className="text-center pb-4 pt-6 bg-gradient-to-br from-slate-50 to-gray-100">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-teal-500 to-teal-700 rounded-full flex items-center justify-center shadow-lg">
+            <Card className="relative overflow-hidden bg-white border-0 shadow-soft hover:shadow-card transition-all duration-500 group hover:scale-105 transform">
+              <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-r from-teal-500 to-cyan-600 rounded-t-2xl"></div>
+              <CardHeader className="text-center pb-4 pt-8 bg-gradient-to-br from-teal-50 to-cyan-50">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-2xl flex items-center justify-center shadow-soft">
                   <Gavel className="h-8 w-8 text-white" />
                 </div>
                 <Badge className="w-fit mx-auto mb-4 bg-teal-100 text-teal-800 font-semibold px-4 py-2 rounded-full border border-teal-200">Judiciary</Badge>
@@ -226,16 +232,16 @@ export const Landing = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-4 pb-6 px-6">
-                <Button className="w-full bg-gradient-to-r from-teal-500 to-teal-700 hover:from-teal-600 hover:to-teal-800 text-white font-semibold py-3 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl" asChild>
+                <Button className="w-full bg-gradient-to-r from-teal-500 to-cyan-600 hover:from-teal-600 hover:to-cyan-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-soft hover:shadow-glow" asChild>
                   <Link to="/register?role=judge">Register as Judge</Link>
                 </Button>
               </CardContent>
             </Card>
 
-            <Card className="relative overflow-hidden bg-white border-0 shadow-xl hover:shadow-2xl transition-all duration-500 group hover:scale-105 transform perspective-1000 hover:rotate-y-2">
-              <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-emerald-500 to-emerald-700"></div>
-              <CardHeader className="text-center pb-4 pt-6 bg-gradient-to-br from-slate-50 to-gray-100">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-full flex items-center justify-center shadow-lg">
+            <Card className="relative overflow-hidden bg-white border-0 shadow-soft hover:shadow-card transition-all duration-500 group hover:scale-105 transform">
+              <div className="absolute top-0 left-0 w-full h-3 bg-gradient-to-r from-emerald-500 to-green-600 rounded-t-2xl"></div>
+              <CardHeader className="text-center pb-4 pt-8 bg-gradient-to-br from-emerald-50 to-green-50">
+                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl flex items-center justify-center shadow-soft">
                   <Scale className="h-8 w-8 text-white" />
                 </div>
                 <Badge className="w-fit mx-auto mb-4 bg-emerald-100 text-emerald-800 font-semibold px-4 py-2 rounded-full border border-emerald-200">Legal Profession</Badge>
@@ -245,7 +251,7 @@ export const Landing = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="pt-4 pb-6 px-6">
-                <Button className="w-full bg-gradient-to-r from-emerald-500 to-emerald-700 hover:from-emerald-600 hover:to-emerald-800 text-white font-semibold py-3 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl" asChild>
+                <Button className="w-full bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 shadow-soft hover:shadow-glow" asChild>
                   <Link to="/register?role=lawyer">Register as Lawyer</Link>
                 </Button>
               </CardContent>
@@ -264,13 +270,13 @@ export const Landing = () => {
             Join thousands of citizens, legal professionals, and law enforcement officers using our platform for transparent and efficient justice.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="btn-hero text-lg px-8 py-4" asChild>
+            <Button size="lg" className="btn-hero text-lg px-8 py-4 shadow-glow" asChild>
               <Link to="/register">
                 Get Started Today
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
             </Button>
-            <Button size="lg" variant="outline" className="text-black border-white hover:bg-white hover:text-tertiary text-lg px-8 py-4" asChild>
+            <Button size="lg" variant="outline" className="btn-outline-white text-lg px-8 py-4 backdrop-blur-sm" asChild>
               <Link to="/contact">
                 Contact Support
               </Link>

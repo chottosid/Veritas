@@ -1,4 +1,4 @@
-# Justice Nexus Chain - Technical Documentation
+# Veritas - Technical Documentation
 
 ## Table of Contents
 1. [Project Overview](#project-overview)
@@ -13,7 +13,7 @@
 
 ## Project Overview
 
-Justice Nexus Chain is a comprehensive blockchain-based justice management system designed to streamline legal processes, enhance transparency, and improve the efficiency of the judicial system. The platform serves multiple user roles including citizens, police officers, judges, and lawyers, providing role-specific dashboards and functionalities.
+Veritas is a comprehensive blockchain-based justice management system designed to streamline legal processes, enhance transparency, and improve the efficiency of the judicial system. The platform serves multiple user roles including citizens, police officers, judges, and lawyers, providing role-specific dashboards and functionalities.
 
 ### Key Features
 - **Multi-role User Management**: Citizens, Police, Judges, Lawyers
@@ -421,6 +421,6 @@ src/
 
 ## Conclusion
 
-Justice Nexus Chain represents a modern approach to justice management, leveraging blockchain technology for transparency and immutability while providing an intuitive user experience. The system is designed to be scalable, secure, and maintainable, with comprehensive documentation in place.
+Veritas represents a modern approach to justice management, leveraging blockchain technology for transparency and immutability while providing an intuitive user experience. The system is designed to be scalable, secure, and maintainable, with comprehensive documentation in place.
 
 The platform successfully bridges the gap between traditional justice systems and modern technology, providing a foundation for future enhancements and integrations.

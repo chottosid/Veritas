@@ -9,10 +9,12 @@ import {
   FIR,
   Notification,
   CaseProceeding,
+  OTP,
 } from "../models/index.js";
 import { authenticateToken } from "../middleware/auth.js";
 import { uploadToIPFS } from "../utils/ipfs.js";
 import { appendCaseProceeding } from "../utils/caseProceedings.js";
+import { verifyOTP } from "../utils/emailService.js";
 
 const router = express.Router();
 
@@ -37,6 +39,7 @@ router.post("/register", async (req, res) => {
       firmName,
       bid,
       password,
+      otp,
     } = req.body;
 
     if (!password || password.length < 6) {
@@ -56,6 +59,34 @@ router.post("/register", async (req, res) => {
         success: false,
         message: "Lawyer already exists with this BID, phone, or email",
       });
+    }
+
+    // OTP verification for lawyer registration
+    if (!otp) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP is required for registration",
+      });
+    }
+
+    // Check if OTP was already verified (marked as used)
+    const otpRecord = await OTP.findOne({
+      email,
+      type: "REGISTRATION",
+      otp,
+      isUsed: true,
+      expiresAt: { $gt: new Date() },
+    });
+
+    if (!otpRecord) {
+      // If not already verified, try to verify it now
+      const otpVerification = await verifyOTP(OTP, email, otp, "REGISTRATION");
+      if (!otpVerification.success) {
+        return res.status(400).json({
+          success: false,
+          message: otpVerification.message,
+        });
+      }
     }
 
     // Hash password

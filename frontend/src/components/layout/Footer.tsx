@@ -4,16 +4,16 @@ import logoIcon from '@/assets/logo-icon.png';
 
 export const Footer = () => {
   return (
-    <footer className="bg-tertiary text-tertiary-foreground">
+    <footer className="bg-gradient-to-br from-tertiary to-secondary text-tertiary-foreground">
       <div className="container py-12 px-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
-              <img src={logoIcon} alt="Justice Nexus Chain" className="h-8 w-8" />
-              <span className="font-bold text-lg">Justice Nexus Chain</span>
+              <img src={logoIcon} alt="Veritas" className="h-8 w-8" />
+              <span className="font-bold text-lg">Veritas</span>
             </div>
-            <p className="text-tertiary-foreground/80 text-sm">
+            <p className="text-tertiary-foreground/80 text-sm leading-relaxed">
               Revolutionizing justice through transparent, efficient, and accessible legal processes.
             </p>
           </div>
@@ -93,7 +93,7 @@ export const Footer = () => {
         </div>
 
         <div className="border-t border-tertiary-foreground/20 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-tertiary-foreground/60">
-          <p>&copy; 2025 Justice Nexus Chain. All rights reserved.</p>
+          <p>&copy; 2025 Veritas. All rights reserved.</p>
           <p>Powered by blockchain technology for transparent justice.</p>
         </div>
       </div>

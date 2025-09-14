@@ -4,23 +4,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Mail, ArrowLeft } from 'lucide-react';
+import { Loader2, Mail, ArrowLeft, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { api } from '@/lib/api';
 
 interface OTPVerificationProps {
   email: string;
   onVerificationSuccess: (otp: string) => void;
   onBack: () => void;
+  type?: 'REGISTRATION' | 'LOGIN' | 'PASSWORD_RESET';
 }
 
-export const OTPVerification = ({ email, onVerificationSuccess, onBack }: OTPVerificationProps) => {
+export const OTPVerification = ({ email, onVerificationSuccess, onBack, type = 'REGISTRATION' }: OTPVerificationProps) => {
   const { toast } = useToast();
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const [error, setError] = useState('');
 
-  const verifyOTP = () => {
+  const verifyOTP = async () => {
     if (!otp || otp.length !== 6) {
       setError('Please enter a valid 6-digit OTP');
       return;
@@ -29,28 +32,80 @@ export const OTPVerification = ({ email, onVerificationSuccess, onBack }: OTPVer
     setIsLoading(true);
     setError('');
 
-    // Simple mock OTP verification
-    if (otp === '661233') {
-      setIsRedirecting(true);
-      toast({
-        title: 'Email Verified',
-        description: 'Your email has been successfully verified! Redirecting to dashboard...',
+    try {
+      const response = await api.post('/otp/verify', {
+        email,
+        otp,
+        type
       });
-      
-      // Add a small delay to show the success message
-      setTimeout(() => {
-        onVerificationSuccess(otp);
-      }, 1500);
-    } else {
-      setError('Invalid OTP. Please enter the correct verification code (661233).');
+
+      if (response.data.success) {
+        setIsRedirecting(true);
+        toast({
+          title: 'Email Verified',
+          description: 'Your email has been successfully verified! Redirecting...',
+        });
+        
+        // Add a small delay to show the success message
+        setTimeout(() => {
+          onVerificationSuccess(otp);
+        }, 1500);
+      } else {
+        setError(response.data.message || 'Verification failed');
+        toast({
+          title: 'Verification Failed',
+          description: response.data.message || 'Invalid OTP. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to verify OTP. Please try again.';
+      setError(errorMessage);
       toast({
         title: 'Verification Failed',
-        description: 'Invalid OTP. Please try again.',
+        description: errorMessage,
         variant: 'destructive',
       });
     }
     
     setIsLoading(false);
+  };
+
+  const resendOTP = async () => {
+    setIsResending(true);
+    setError('');
+
+    try {
+      const response = await api.post('/otp/resend', {
+        email,
+        type
+      });
+
+      if (response.data.success) {
+        toast({
+          title: 'OTP Resent',
+          description: 'A new verification code has been sent to your email.',
+        });
+        setOtp(''); // Clear the current OTP input
+      } else {
+        setError(response.data.message || 'Failed to resend OTP');
+        toast({
+          title: 'Resend Failed',
+          description: response.data.message || 'Failed to resend OTP. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || 'Failed to resend OTP. Please try again.';
+      setError(errorMessage);
+      toast({
+        title: 'Resend Failed',
+        description: errorMessage,
+        variant: 'destructive',
+      });
+    }
+    
+    setIsResending(false);
   };
 
   return (
@@ -87,7 +142,11 @@ export const OTPVerification = ({ email, onVerificationSuccess, onBack }: OTPVer
             }}
             maxLength={6}
             className="text-center text-lg tracking-widest"
+            disabled={isLoading || isRedirecting}
           />
+          <p className="text-sm text-muted-foreground text-center">
+            Code sent to <span className="font-medium">{email}</span>
+          </p>
         </div>
 
         <div className="space-y-3">
@@ -117,14 +176,35 @@ export const OTPVerification = ({ email, onVerificationSuccess, onBack }: OTPVer
           )}
 
           {!isRedirecting && (
-            <Button
-              variant="outline"
-              onClick={onBack}
-              className="w-full"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
-            </Button>
+            <div className="space-y-2">
+              <Button
+                variant="outline"
+                onClick={resendOTP}
+                disabled={isResending || isLoading}
+                className="w-full"
+              >
+                {isResending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Resending...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Resend Code
+                  </>
+                )}
+              </Button>
+              
+              <Button
+                variant="ghost"
+                onClick={onBack}
+                className="w-full"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back
+              </Button>
+            </div>
           )}
         </div>
 

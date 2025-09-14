@@ -356,19 +356,19 @@ export const Dashboard = () => {
           {getDashboardCards().map((card, index) => {
             const Icon = card.icon;
             return (
-              <Card key={index} className="hover:shadow-lg transition-all duration-300 group cursor-pointer">
+              <Card key={index} className="card-friendly group cursor-pointer">
                 <Link to={card.link}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
                       {card.title}
                     </CardTitle>
-                    <div className={`p-2 rounded-lg ${card.bgColor} group-hover:scale-110 transition-transform`}>
-                      <Icon className={`h-4 w-4 ${card.color}`} />
+                    <div className={`p-3 rounded-xl ${card.bgColor} group-hover:scale-110 transition-transform shadow-soft`}>
+                      <Icon className={`h-5 w-5 ${card.color}`} />
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{card.value}</div>
-                    <p className="text-xs text-gray-600">
+                    <div className="text-3xl font-bold gradient-text">{card.value}</div>
+                    <p className="text-sm text-muted-foreground font-medium">
                       {card.description}
                     </p>
                   </CardContent>
@@ -381,10 +381,10 @@ export const Dashboard = () => {
         {/* Quick Actions & Recent Activity */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Quick Actions */}
-          <Card className="shadow-sm">
+          <Card className="card-friendly">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-blue-600" />
+                <TrendingUp className="h-5 w-5 text-primary" />
                 Quick Actions
               </CardTitle>
               <CardDescription>
@@ -395,17 +395,17 @@ export const Dashboard = () => {
               {getQuickActions().map((action, index) => {
                 const Icon = action.icon;
                 return (
-                  <div key={index} className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                  <div key={index} className="flex items-center justify-between p-4 rounded-xl border border-border/20 hover:bg-muted/50 transition-all duration-300 bounce-hover">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-blue-100">
-                        <Icon className="h-4 w-4 text-blue-600" />
+                      <div className="p-3 rounded-xl bg-primary/10">
+                        <Icon className="h-5 w-5 text-primary" />
                       </div>
                       <div>
-                        <h4 className="font-medium">{action.title}</h4>
-                        <p className="text-sm text-gray-600">{action.description}</p>
+                        <h4 className="font-semibold">{action.title}</h4>
+                        <p className="text-sm text-muted-foreground">{action.description}</p>
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm" asChild>
+                    <Button variant="ghost" size="sm" className="hover:bg-primary/10" asChild>
                       <Link to={action.link}>Go</Link>
                     </Button>
                   </div>
@@ -415,10 +415,10 @@ export const Dashboard = () => {
           </Card>
 
           {/* Recent Activity */}
-          <Card className="shadow-sm">
+          <Card className="card-friendly">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-purple-600" />
+                <Clock className="h-5 w-5 text-secondary" />
                 Recent Activity
               </CardTitle>
               <CardDescription>
@@ -428,23 +428,23 @@ export const Dashboard = () => {
             <CardContent>
               <div className="space-y-4">
                 {stats.recentActivity.map((activity) => (
-                  <div key={activity.id} className="flex items-start gap-3">
+                  <div key={activity.id} className="flex items-start gap-3 p-3 rounded-xl hover:bg-muted/30 transition-colors">
                     <div className="flex-shrink-0 mt-1">
                       {getStatusIcon(activity.status || '')}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <h4 className="font-medium text-sm">{activity.title}</h4>
+                        <h4 className="font-semibold text-sm">{activity.title}</h4>
                         {activity.status && (
                           <Badge variant="outline" className="text-xs">
                             {activity.status}
                           </Badge>
                         )}
                       </div>
-                      <p className="text-sm text-gray-600 mt-1">
+                      <p className="text-sm text-muted-foreground mt-1">
                         {activity.description}
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         {activity.time}
                       </p>
                     </div>
@@ -453,7 +453,7 @@ export const Dashboard = () => {
                 
                 <Separator />
                 
-                <Button variant="ghost" className="w-full text-sm" asChild>
+                <Button variant="ghost" className="w-full text-sm hover:bg-primary/10" asChild>
                   <Link to="/notifications">
                     View All Activity
                   </Link>
@@ -464,7 +464,7 @@ export const Dashboard = () => {
         </div>
 
         {/* Progress Overview */}
-        <Card className="shadow-sm">
+        <Card className="card-friendly">
           <CardHeader>
             <CardTitle>System Overview</CardTitle>
             <CardDescription>
@@ -473,19 +473,19 @@ export const Dashboard = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
+              <div className="space-y-3 p-4 rounded-xl bg-gradient-to-r from-primary/5 to-secondary/5">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Case Resolution Rate</span>
-                  <span className="text-sm text-gray-600">87%</span>
+                  <span className="text-sm font-semibold">Case Resolution Rate</span>
+                  <span className="text-sm font-bold text-primary">87%</span>
                 </div>
-                <Progress value={87} className="h-2" />
+                <Progress value={87} className="h-3" />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3 p-4 rounded-xl bg-gradient-to-r from-secondary/5 to-tertiary/5">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Average Response Time</span>
-                  <span className="text-sm text-gray-600">2.3 days</span>
+                  <span className="text-sm font-semibold">Average Response Time</span>
+                  <span className="text-sm font-bold text-secondary">2.3 days</span>
                 </div>
-                <Progress value={75} className="h-2" />
+                <Progress value={75} className="h-3" />
               </div>
             </div>
           </CardContent>

@@ -117,14 +117,14 @@ export const Login = () => {
   return (
     <Layout showFooter={false}>
       <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-gradient-to-br from-background to-muted/30 p-4">
-        <Card className="w-full max-w-md card-elegant">
+        <Card className="w-full max-w-md card-friendly">
           <CardHeader className="text-center space-y-4">
-            <div className="mx-auto w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
-              <Icon className="h-6 w-6 text-primary" />
+            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-2xl flex items-center justify-center shadow-soft">
+              <Icon className="h-8 w-8 text-primary" />
             </div>
             <div>
               <CardTitle className="text-2xl font-bold">{config.title}</CardTitle>
-              <CardDescription>{config.description}</CardDescription>
+              <CardDescription className="text-base">{config.description}</CardDescription>
             </div>
           </CardHeader>
           

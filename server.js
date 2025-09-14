@@ -13,6 +13,7 @@ import policeRoutes from "./routes/police.js";
 import judgeRoutes from "./routes/judges.js";
 import lawyerRoutes from "./routes/lawyers.js";
 import blockchainRoutes from "./routes/blockchain.js";
+import otpRoutes from "./routes/otp.js";
 
 const app = express();
 const server = createServer(app);
@@ -58,6 +59,7 @@ app.use("/api/police", policeRoutes);
 app.use("/api/judges", judgeRoutes);
 app.use("/api/lawyers", lawyerRoutes);
 app.use("/api/blockchain", blockchainRoutes);
+app.use("/api/otp", otpRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
