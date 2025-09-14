@@ -1,16 +1,16 @@
 # Veritas
 
 <div align="center">
-  <img src="frontend/src/assets/logo.png" alt="Veritas Logo" width="200" height="200">
+  <img src="frontend/public/veritas.png" alt="Veritas Logo" width="200" height="200">
 </div>
 
-**Our submission for Bangladesh Blockchain Olympiad 2025**
+**A comprehensive blockchain-based justice management system**
 
-This is our complete blockchain-based justice management system that we've built for the competition. It's designed to bring transparency and efficiency to the judicial process using smart contracts and modern web technologies.
+Veritas is a complete blockchain-based justice management system designed to bring transparency and efficiency to the judicial process using smart contracts and modern web technologies.
 
 ## What We Built
 
-Veritas is a comprehensive platform that connects citizens, police officers, judges, and lawyers in a transparent, blockchain-powered ecosystem. Think of it as a digital bridge between traditional justice systems and modern technology.
+Veritas is a comprehensive platform that connects citizens, police officers, judges, and lawyers in a transparent, blockchain-powered ecosystem. It serves as a digital bridge between traditional justice systems and modern technology.
 
 **Key Features:**
 - Citizens can file complaints with blockchain verification
@@ -29,7 +29,7 @@ We've built this as a full-stack application with:
 - **Blockchain**: Ethereum-based smart contracts for immutable records
 - **File Storage**: IPFS for decentralized document storage
 
-The system uses JWT authentication, WebSocket for real-time updates, and integrates with Celo Sepolia and Polygon testnet for blockchain functionality.
+The system uses JWT authentication, WebSocket for real-time updates, and integrates with Ethereum-based networks for blockchain functionality.
 
 ## Quick Setup
 
@@ -76,4 +76,4 @@ That's it! The system should be up and running. Check the technical documentatio
 
 ---
 
-*Built with ❤️ for Bangladesh Blockchain Olympiad 2025*
+*Built with ❤️ for transparent justice*

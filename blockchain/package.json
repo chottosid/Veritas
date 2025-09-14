@@ -1,7 +1,7 @@
 {
   "name": "veritas-blockchain",
   "version": "1.0.0",
-  "description": "",
+  "description": "Veritas Blockchain - Smart Contracts for Justice Management System",
   "main": "index.js",
   "scripts": {
     "test": "echo \"No tests\" && exit 0",

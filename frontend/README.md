@@ -1,6 +1,6 @@
 # Veritas Frontend
 
-This is the frontend application for Veritas, a blockchain-based justice management system.
+This is the frontend application for Veritas, a comprehensive blockchain-based justice management system.
 
 ## Technologies Used
 

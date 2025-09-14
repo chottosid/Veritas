@@ -1,6 +1,6 @@
 # Veritas Blockchain
 
-This is the blockchain component of Veritas, a blockchain-based justice management system. It contains smart contracts for managing justice events and case proceedings.
+This is the blockchain component of Veritas, a comprehensive blockchain-based justice management system. It contains smart contracts for managing justice events and case proceedings.
 
 ## Project Overview
 
@@ -28,9 +28,9 @@ npx hardhat test solidity
 npx hardhat test mocha
 ```
 
-### Make a deployment to Sepolia
+### Deploy Smart Contracts
 
-This project includes an example Ignition module to deploy the contract. You can deploy this module to a locally simulated chain or to Sepolia.
+This project includes deployment scripts for smart contracts. You can deploy contracts to a locally simulated chain or to various testnets.
 
 To run the deployment to a local chain:
 
@@ -38,18 +38,10 @@ To run the deployment to a local chain:
 npx hardhat ignition deploy ignition/modules/Counter.ts
 ```
 
-To run the deployment to Sepolia, you need an account with funds to send the transaction. The provided Hardhat configuration includes a Configuration Variable called `SEPOLIA_PRIVATE_KEY`, which you can use to set the private key of the account you want to use.
+To deploy to a testnet, you need an account with funds to send the transaction. Configure your private key in the environment variables or Hardhat configuration.
 
-You can set the `SEPOLIA_PRIVATE_KEY` variable using the `hardhat-keystore` plugin or by setting it as an environment variable.
-
-To set the `SEPOLIA_PRIVATE_KEY` config variable using `hardhat-keystore`:
+Example deployment to a testnet:
 
 ```shell
-npx hardhat keystore set SEPOLIA_PRIVATE_KEY
-```
-
-After setting the variable, you can run the deployment with the Sepolia network:
-
-```shell
-npx hardhat ignition deploy --network sepolia ignition/modules/Counter.ts
+npx hardhat ignition deploy --network <network-name> ignition/modules/Counter.ts
 ```

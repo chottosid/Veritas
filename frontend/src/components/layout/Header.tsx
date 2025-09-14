@@ -106,7 +106,7 @@ export const Header = () => {
       <div className="container flex h-16 items-center justify-between px-4">
         {/* Logo */}
         <Link to="/" className="flex items-center space-x-2 bounce-hover">
-          <img src="/stop.png" alt="Veritas" className="h-8" />
+          <img src="/veritas.png" alt="Veritas" className="h-8" />
         </Link>
 
         {/* Desktop Navigation */}

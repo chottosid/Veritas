@@ -74,7 +74,7 @@ Veritas is a comprehensive blockchain-based justice management system designed t
 - **Blockchain**: Ethers.js, Hardhat
 
 ### Blockchain
-- **Network**: Ethereum (Amoy Testnet)
+- **Network**: Ethereum-based networks
 - **Development**: Hardhat
 - **Smart Contracts**: Solidity 0.8.24
 - **Web3 Library**: Ethers.js
@@ -378,7 +378,7 @@ contract JusticeEvents {
 4. **Evidence Storage**: IPFS hashes stored on blockchain
 
 ### Web3 Integration
-- **Network**: Amoy Testnet (Polygon)
+- **Network**: Ethereum-based networks
 - **Gas Management**: Automatic gas estimation
 - **Error Handling**: Comprehensive transaction error handling
 - **Event Listening**: Real-time blockchain event monitoring

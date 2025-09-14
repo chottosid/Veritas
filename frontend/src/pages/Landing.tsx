@@ -3,7 +3,7 @@ import { ArrowRight, Shield, Scale, Users, Gavel, CheckCircle, FileText, Clock }
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import logoIcon from '@/assets/logo-icon.png';
+import logoIcon from '/veritas.png';
 
 export const Landing = () => {
   const features = [

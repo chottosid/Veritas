@@ -1,7 +1,8 @@
 {
   "name": "veritas-frontend",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Veritas Frontend - Blockchain-based Justice Management System",
   "type": "module",
   "scripts": {
     "dev": "vite",

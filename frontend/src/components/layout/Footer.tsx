@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Scale, Shield, Users, Gavel } from 'lucide-react';
-import logoIcon from '@/assets/logo-icon.png';
+import logoIcon from '/veritas.png';
 
 export const Footer = () => {
   return (
