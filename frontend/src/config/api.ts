@@ -1,7 +1,8 @@
 // Centralized API configuration
 export const API_CONFIG = {
   // Backend server configuration
-  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001',
+  BASE_URL: import.meta.env.VITE_API_BASE_URL || 
+    (typeof window !== 'undefined' ? window.location.protocol + '//' + window.location.host : 'http://localhost:3001'),
   API_PREFIX: '/api',
   
   // Derived URLs

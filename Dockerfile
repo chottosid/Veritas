@@ -13,7 +13,11 @@ RUN npm ci
 # Copy frontend source code
 COPY frontend/ ./
 
-# Build frontend
+# Set environment variables for frontend build
+ARG VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
+# Build frontend with production environment
 RUN npm run build
 
 # Production stage
@@ -40,6 +44,9 @@ COPY --chown=nodejs:nodejs . .
 
 # Copy built frontend from builder stage
 COPY --from=frontend-builder --chown=nodejs:nodejs /app/frontend/dist ./frontend/dist
+
+# Set production environment variables
+ENV NODE_ENV=production
 
 # Create blockchain directories and copy artifacts if they exist
 RUN mkdir -p ./blockchain/artifacts ./blockchain/deployments

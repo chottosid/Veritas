@@ -1,0 +1,70 @@
+name: Deploy to Azure VM
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: false
+        tags: veritas-justice:latest
+        build-args: |
+          VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        
+    - name: Deploy to Azure VM
+      if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.AZURE_VM_HOST }}
+        username: ${{ secrets.AZURE_VM_USERNAME }}
+        key: ${{ secrets.AZURE_VM_SSH_KEY }}
+        port: ${{ secrets.AZURE_VM_PORT || 22 }}
+        script: |
+          # Stop existing container
+          docker stop veritas-justice || true
+          docker rm veritas-justice || true
+          
+          # Pull latest image (if using registry) or copy from build
+          # For this example, we'll build on the VM
+          cd /home/${{ secrets.AZURE_VM_USERNAME }}/veritas-justice
+          git pull origin master
+          
+          # Build new image with environment variables
+          docker build \
+            --build-arg VITE_API_BASE_URL="${{ secrets.VITE_API_BASE_URL }}" \
+            -t veritas-justice:latest .
+          
+          # Run new container with environment variables
+          docker run -d \
+            --name veritas-justice \
+            --restart unless-stopped \
+            -p 3001:3001 \
+            -e NODE_ENV=production \
+            -e ALLOWED_ORIGINS="${{ secrets.ALLOWED_ORIGINS }}" \
+            -e MONGODB_URI="${{ secrets.MONGODB_URI }}" \
+            -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+            -e PINATA_API_KEY="${{ secrets.PINATA_API_KEY }}" \
+            -e PINATA_SECRET_KEY="${{ secrets.PINATA_SECRET_KEY }}" \
+            -e EMAIL_USER="${{ secrets.EMAIL_USER }}" \
+            -e EMAIL_PASS="${{ secrets.EMAIL_PASS }}" \
+            veritas-justice:latest
+          
+          # Clean up old images
+          docker image prune -f
