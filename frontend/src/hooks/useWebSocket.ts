@@ -55,8 +55,15 @@ export const useWebSocket = (): UseWebSocketReturn => {
     }
 
     // Create new socket connection
-    const socket = io(import.meta.env.VITE_API_BASE_URL || 
-      (typeof window !== 'undefined' ? window.location.protocol + '//' + window.location.host : 'http://localhost:3001'), {
+    // In development, use the Vite dev server (with proxy) as base URL
+    // In production, use the current host or fallback to backend port
+    const socketUrl = import.meta.env.VITE_API_BASE_URL || 
+      (import.meta.env.DEV ? 
+        `${window.location.protocol}//${window.location.host}` : 
+        (typeof window !== 'undefined' ? window.location.protocol + '//' + window.location.host : 'http://localhost:3001')
+      );
+    
+    const socket = io(socketUrl, {
       auth: {
         token: token
       },
