@@ -72,8 +72,3 @@ Make sure you have these installed:
 npm start
 ```
 
-That's it! The system should be up and running. Check the technical documentation for more detailed setup instructions and API documentation.
-
----
-
-*Built with ❤️ for transparent justice*
