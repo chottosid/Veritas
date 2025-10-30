@@ -16,6 +16,13 @@ export default defineConfig(({ mode }) => ({
         secure: false,
         ws: true, // Support WebSocket connections
       },
+      // Proxy Socket.IO requests to backend server
+      '/socket.io': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+        ws: true, // Support WebSocket connections
+      },
       // Proxy health check endpoint
       '/health': {
         target: 'http://localhost:3001',

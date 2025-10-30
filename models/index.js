@@ -146,6 +146,7 @@ const firSchema = new Schema(
       required: true,
     },
     submittedToJudge: { type: Schema.Types.ObjectId, ref: "Judge" },
+    investigatingOfficerIds: [{ type: Schema.Types.ObjectId, ref: "Police" }],
     status: {
       type: String,
       enum: ["PENDING", "CASE_CREATED"],
@@ -210,10 +211,10 @@ const caseSchema = new Schema(
         ipfsHash: String,
         fileSize: Number,
         uploadedAt: { type: Date, default: Date.now },
-        source: { 
-          type: String, 
-          enum: ["COMPLAINT", "FIR", "CASE"], 
-          default: "CASE" 
+        source: {
+          type: String,
+          enum: ["COMPLAINT", "FIR", "CASE"],
+          default: "CASE",
         }, // Track where the evidence came from
       },
     ],

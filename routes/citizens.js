@@ -18,7 +18,11 @@ import { authenticateToken } from "../middleware/auth.js";
 import { uploadToIPFS } from "../utils/ipfs.js";
 import { emitComplaintFiled } from "../utils/blockchain.js";
 import { verifyOTP } from "../utils/emailService.js";
-import { checkEmailUniqueness, checkPhoneUniqueness, getRoleDisplayName } from "../utils/userValidation.js";
+import {
+  checkEmailUniqueness,
+  checkPhoneUniqueness,
+  getRoleDisplayName,
+} from "../utils/userValidation.js";
 
 const router = express.Router();
 
@@ -51,7 +55,9 @@ router.post("/register", async (req, res) => {
     if (!emailCheck.isUnique) {
       return res.status(400).json({
         success: false,
-        message: `Email is already registered as a ${getRoleDisplayName(emailCheck.role)}. Please use a different email address.`,
+        message: `Email is already registered as a ${getRoleDisplayName(
+          emailCheck.role
+        )}. Please use a different email address.`,
       });
     }
 
@@ -61,7 +67,9 @@ router.post("/register", async (req, res) => {
       if (!phoneCheck.isUnique) {
         return res.status(400).json({
           success: false,
-          message: `Phone number is already registered as a ${getRoleDisplayName(phoneCheck.role)}. Please use a different phone number.`,
+          message: `Phone number is already registered as a ${getRoleDisplayName(
+            phoneCheck.role
+          )}. Please use a different phone number.`,
         });
       }
     }
@@ -685,7 +693,108 @@ router.get("/cases/:caseId", authenticateToken, async (req, res) => {
       return res.status(403).json({ success: false, message: "Access denied" });
     }
 
-    res.json({ success: true, data: caseData });
+    // Get all case proceedings with attachments
+    const caseProceedings = await CaseProceeding.find({ caseId: caseId })
+      .populate("createdById", "name")
+      .sort({ at: -1 });
+
+    // Get all documents from case proceedings
+    const caseDocuments = [];
+    caseProceedings.forEach((proceeding) => {
+      if (proceeding.attachments && proceeding.attachments.length > 0) {
+        proceeding.attachments.forEach((doc) => {
+          caseDocuments.push({
+            fileName: doc.fileName,
+            ipfsHash: doc.ipfsHash,
+            fileSize: doc.fileSize,
+            uploadedAt: doc.uploadedAt,
+            documentSource: "CASE_PROCEEDING",
+            proceedingType: proceeding.type,
+            proceedingDescription: proceeding.description,
+            createdByRole: proceeding.createdByRole,
+            createdAt: proceeding.at,
+          });
+        });
+      }
+    });
+
+    // Get documents from complaint
+    const complaintDocuments = [];
+    if (
+      caseData.firId &&
+      caseData.firId.complaintId &&
+      caseData.firId.complaintId.attachments
+    ) {
+      caseData.firId.complaintId.attachments.forEach((doc) => {
+        complaintDocuments.push({
+          fileName: doc.fileName,
+          ipfsHash: doc.ipfsHash,
+          fileSize: doc.fileSize,
+          uploadedAt: doc.uploadedAt,
+          documentSource: "COMPLAINT",
+          proceedingType: "COMPLAINT_FILED",
+          proceedingDescription: "Documents attached during complaint filing",
+          createdByRole: "CITIZEN",
+          createdAt: doc.uploadedAt,
+        });
+      });
+    }
+
+    // Get documents from FIR
+    const firDocuments = [];
+    if (caseData.firId && caseData.firId.attachments) {
+      caseData.firId.attachments.forEach((doc) => {
+        firDocuments.push({
+          fileName: doc.fileName,
+          ipfsHash: doc.ipfsHash,
+          fileSize: doc.fileSize,
+          uploadedAt: doc.uploadedAt,
+          documentSource: "FIR",
+          proceedingType: "FIR_REGISTERED",
+          proceedingDescription: "Documents attached during FIR registration",
+          createdByRole: "POLICE",
+          createdAt: doc.uploadedAt,
+        });
+      });
+    }
+
+    // Combine all documents and deduplicate by ipfsHash
+    const allDocuments = [
+      ...complaintDocuments,
+      ...firDocuments,
+      ...caseDocuments,
+    ];
+
+    // Deduplicate documents by ipfsHash to prevent duplicates
+    const uniqueDocuments = allDocuments.filter(
+      (doc, index, self) =>
+        index === self.findIndex((d) => d.ipfsHash === doc.ipfsHash)
+    );
+
+    // Sort by creation date
+    const sortedDocuments = uniqueDocuments.sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
+
+    console.log("Citizen case documents found:", {
+      complaintDocuments: complaintDocuments.length,
+      firDocuments: firDocuments.length,
+      caseDocuments: caseDocuments.length,
+      totalDocuments: sortedDocuments.length,
+      uniqueDocuments: uniqueDocuments.length,
+    });
+
+    // Get accused information from FIR
+    const allAccused = caseData.firId.accused || [];
+
+    // Combine case data with all documents and accused information
+    const caseWithDocuments = {
+      ...caseData.toObject(),
+      allDocuments: sortedDocuments,
+      allAccused: allAccused,
+    };
+
+    res.json({ success: true, data: caseWithDocuments });
   } catch (error) {
     console.error("Get case details error:", error);
     res.status(500).json({

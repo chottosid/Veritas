@@ -724,26 +724,23 @@ const LawyerCases: React.FC = () => {
                                               </div>
                                             </div>
                                             
-                                            <div className="flex gap-1">
-                                              <Button
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => window.open(`https://gateway.pinata.cloud/ipfs/${document.ipfsHash}`, '_blank')}
-                                                className="text-xs px-2 py-1"
-                                              >
-                                                View
-                                              </Button>
+                                            <div>
                                               <Button
                                                 variant="outline"
                                                 size="sm"
                                                 onClick={() => {
-                                                  const link = document.createElement('a');
-                                                  link.href = `https://gateway.pinata.cloud/ipfs/${document.ipfsHash}`;
+                                                  const url = getIPFSUrl(document.ipfsHash);
+                                                  const link = window.document.createElement('a');
+                                                  link.href = url;
                                                   link.download = document.fileName;
+                                                  link.target = '_blank';
+                                                  window.document.body.appendChild(link);
                                                   link.click();
+                                                  window.document.body.removeChild(link);
                                                 }}
-                                                className="text-xs px-2 py-1"
+                                                className="text-xs"
                                               >
+                                                <Download className="h-3 w-3 mr-1" />
                                                 Download
                                               </Button>
                                             </div>

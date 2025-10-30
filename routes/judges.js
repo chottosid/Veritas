@@ -17,9 +17,17 @@ import { appendCaseProceeding } from "../utils/caseProceedings.js";
 import { notifyCaseParties } from "../utils/notifications.js";
 import { emitCaseCreated, emitCaseUpdated } from "../utils/blockchain.js";
 import NotificationService from "../utils/notifications.js";
-import { validateFIRToCaseTransfer, generateDataTransferReport, validateWorkflowDataIntegrity } from "../utils/dataIntegrity.js";
+import {
+  validateFIRToCaseTransfer,
+  generateDataTransferReport,
+  validateWorkflowDataIntegrity,
+} from "../utils/dataIntegrity.js";
 import { verifyOTP } from "../utils/emailService.js";
-import { checkEmailUniqueness, checkPhoneUniqueness, getRoleDisplayName } from "../utils/userValidation.js";
+import {
+  checkEmailUniqueness,
+  checkPhoneUniqueness,
+  getRoleDisplayName,
+} from "../utils/userValidation.js";
 
 const router = express.Router();
 
@@ -69,7 +77,9 @@ router.post("/register", async (req, res) => {
     if (!emailCheck.isUnique) {
       return res.status(400).json({
         success: false,
-        message: `Email is already registered as a ${getRoleDisplayName(emailCheck.role)}. Please use a different email address.`,
+        message: `Email is already registered as a ${getRoleDisplayName(
+          emailCheck.role
+        )}. Please use a different email address.`,
       });
     }
 
@@ -79,7 +89,9 @@ router.post("/register", async (req, res) => {
       if (!phoneCheck.isUnique) {
         return res.status(400).json({
           success: false,
-          message: `Phone number is already registered as a ${getRoleDisplayName(phoneCheck.role)}. Please use a different phone number.`,
+          message: `Phone number is already registered as a ${getRoleDisplayName(
+            phoneCheck.role
+          )}. Please use a different phone number.`,
         });
       }
     }
@@ -275,12 +287,17 @@ router.get("/firs", authenticateToken, async (req, res) => {
           },
           {
             path: "accused",
-            select: "name address phone email nid age gender occupation relationshipToComplainant addedBy addedById",
+            select:
+              "name address phone email nid age gender occupation relationshipToComplainant addedBy addedById",
           },
         ],
       })
       .select("+accused") // Include FIR's own accused persons
       .sort({ createdAt: -1 });
+
+    console.log(
+      `Found ${firs.length} FIRs with PENDING status for judge ${judgeId}`
+    );
 
     res.json({
       success: true,
@@ -351,64 +368,28 @@ router.post("/firs/:firId/case", authenticateToken, async (req, res) => {
       });
     }
 
-    // Validate data transfer integrity
-    const validation = validateFIRToCaseTransfer(fir, { caseNumber });
-    if (!validation.isValid) {
-      console.warn("Data transfer validation issues:", validation.issues);
-      // Log warnings but continue with case creation
-    }
-
-    // Aggregate all accused information from complaint and FIR
-    const complaintAccused = fir.complaintId.accused || [];
-    const firAccused = fir.accused || [];
-    
-    // Combine and deduplicate accused information
-    const allAccused = [...complaintAccused, ...firAccused];
-    const uniqueAccused = allAccused.filter(
-      (accused, index, self) =>
-        index ===
-        self.findIndex(
-          (a) => a.name === accused.name && a.address === accused.address
-        )
-    );
-
-    // Aggregate all evidence/attachments from complaint and FIR
-    const complaintAttachments = (fir.complaintId.attachments || []).map(att => ({
-      ...att,
-      source: "COMPLAINT"
-    }));
-    const firAttachments = (fir.attachments || []).map(att => ({
-      ...att,
-      source: "FIR"
-    }));
-    
-    // Combine and deduplicate attachments by IPFS hash
-    const allAttachments = [...complaintAttachments, ...firAttachments];
-    const uniqueAttachments = allAttachments.filter(
-      (attachment, index, self) =>
-        index === self.findIndex((a) => a.ipfsHash === attachment.ipfsHash)
-    );
-
-    // Create new case with all transferred data
+    // Create new case with data from FIR only
     const newCase = new Case({
       firId: fir._id,
       caseNumber,
       assignedJudgeId: judgeId,
       status: "PENDING",
-      investigatingOfficerIds: fir.complaintId.assignedOfficerIds || [],
-      accused: uniqueAccused,
-      attachments: uniqueAttachments,
+      investigatingOfficerIds: fir.investigatingOfficerIds || [],
+      accused: fir.accused || [],
+      attachments: fir.attachments || [],
     });
 
     await newCase.save();
 
-    // Generate data transfer report for audit trail
-    const transferReport = generateDataTransferReport(fir, newCase, "FIR_TO_CASE");
-    console.log("Data transfer report:", transferReport);
-
     // Update FIR status to indicate case has been created
+    console.log(
+      `Updating FIR ${fir.firNumber} status from ${fir.status} to CASE_CREATED`
+    );
     fir.status = "CASE_CREATED";
     await fir.save();
+    console.log(
+      `FIR ${fir.firNumber} status updated successfully to ${fir.status}`
+    );
 
     // Create case proceeding record for case creation
     await appendCaseProceeding(CaseProceeding, {
@@ -419,14 +400,14 @@ router.post("/firs/:firId/case", authenticateToken, async (req, res) => {
       description: `Case ${caseNumber} created from FIR ${fir.firNumber}`,
     });
 
-    // Create a case proceeding record documenting all accumulated documents from FIR
+    // Create a case proceeding record documenting documents from FIR
     if (fir.attachments && fir.attachments.length > 0) {
       await appendCaseProceeding(CaseProceeding, {
         caseId: newCase._id,
         type: "DOCUMENT_FILED",
         createdByRole: "SYSTEM",
         createdById: judgeId,
-        description: `Case created with ${fir.attachments.length} accumulated documents from complaint and FIR`,
+        description: `Case created with ${fir.attachments.length} documents from FIR`,
         attachments: fir.attachments,
       });
     }
@@ -440,17 +421,14 @@ router.post("/firs/:firId/case", authenticateToken, async (req, res) => {
       complaintId: fir.complaintId._id.toString(),
     });
 
-    // Notify police officers about case creation
-    if (
-      fir.complaintId.assignedOfficerIds &&
-      fir.complaintId.assignedOfficerIds.length > 0
-    ) {
-      for (const officerId of fir.complaintId.assignedOfficerIds) {
+    // Notify investigating officers about case creation
+    if (fir.investigatingOfficerIds && fir.investigatingOfficerIds.length > 0) {
+      for (const officerId of fir.investigatingOfficerIds) {
         await NotificationService.createNotification(Notification, {
           recipientId: officerId,
           recipientType: "POLICE",
           title: "Case Created",
-          message: `Case ${caseNumber} has been created from your FIR ${fir.firNumber}`,
+          message: `Case ${caseNumber} has been created from FIR ${fir.firNumber}`,
           type: "CASE_CREATED",
           caseId: newCase._id,
           firId: fir._id,
@@ -538,22 +516,22 @@ router.get("/cases", authenticateToken, async (req, res) => {
 
       // Get documents from complaint
       const complaintAttachments = case_.firId.complaintId.attachments || [];
-      
+
       // Get documents from FIR
       const firAttachments = case_.firId.attachments || [];
-      
+
       // Combine all documents and deduplicate by IPFS hash (same as case details)
       const allDocuments = [
         ...complaintAttachments,
         ...firAttachments,
         // Note: Case proceedings documents are already counted in caseProceedingDocs
       ];
-      
+
       const uniqueDocuments = allDocuments.filter(
         (doc, index, self) =>
           index === self.findIndex((d) => d.ipfsHash === doc.ipfsHash)
       );
-      
+
       // Total = unique complaint/FIR documents + case proceeding documents
       const totalDocuments = uniqueDocuments.length + caseProceedingDocs;
 
@@ -737,26 +715,15 @@ router.get("/cases/:caseId", authenticateToken, async (req, res) => {
       uniqueDocuments: uniqueDocuments.length,
     });
 
-    // Aggregate all accused information from complaint and FIR
-    const complaintAccused = caseData.firId.complaintId.accused || [];
-    const firAccused = caseData.firId.accused || [];
-
-    // Combine and deduplicate accused information
-    const allAccused = [...complaintAccused, ...firAccused];
-    const uniqueAccused = allAccused.filter(
-      (accused, index, self) =>
-        index ===
-        self.findIndex(
-          (a) => a.name === accused.name && a.address === accused.address
-        )
-    );
+    // Get accused information from FIR only
+    const allAccused = caseData.firId.accused || [];
 
     // Combine case data with lawyer requests, documents, and accused information
     const caseWithLawyers = {
       ...caseData.toObject(),
       lawyerRequests: lawyerRequests,
       allDocuments: sortedDocuments,
-      allAccused: uniqueAccused,
+      allAccused: allAccused,
     };
 
     res.json({
@@ -1383,39 +1350,48 @@ router.get(
 );
 
 // Validate data integrity for a case
-router.get("/cases/:caseId/validate-integrity", authenticateToken, async (req, res) => {
-  try {
-    const { caseId } = req.params;
-    const judgeId = req.user.id;
+router.get(
+  "/cases/:caseId/validate-integrity",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { caseId } = req.params;
+      const judgeId = req.user.id;
 
-    // Verify judge has access to this case
-    const caseData = await Case.findOne({
-      _id: caseId,
-      assignedJudgeId: judgeId,
-    });
+      // Verify judge has access to this case
+      const caseData = await Case.findOne({
+        _id: caseId,
+        assignedJudgeId: judgeId,
+      });
 
-    if (!caseData) {
-      return res.status(404).json({
+      if (!caseData) {
+        return res.status(404).json({
+          success: false,
+          message: "Case not found or not assigned to you",
+        });
+      }
+
+      // Validate workflow data integrity
+      const integrityCheck = await validateWorkflowDataIntegrity(
+        caseId,
+        Case,
+        FIR,
+        Complaint
+      );
+
+      res.json({
+        success: true,
+        data: integrityCheck,
+      });
+    } catch (error) {
+      console.error("Data integrity validation error:", error);
+      res.status(500).json({
         success: false,
-        message: "Case not found or not assigned to you",
+        message: "Failed to validate data integrity",
+        error: error.message,
       });
     }
-
-    // Validate workflow data integrity
-    const integrityCheck = await validateWorkflowDataIntegrity(caseId, Case, FIR, Complaint);
-
-    res.json({
-      success: true,
-      data: integrityCheck,
-    });
-  } catch (error) {
-    console.error("Data integrity validation error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to validate data integrity",
-      error: error.message,
-    });
   }
-});
+);
 
 export default router;

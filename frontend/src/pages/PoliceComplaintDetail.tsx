@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Layout } from "@/components/layout/Layout";
 import { api } from "@/lib/api";
+import { getIPFSUrl } from "@/config/api";
 import { 
   FileText, 
   User, 
@@ -110,7 +111,6 @@ export const PoliceComplaintDetail = () => {
   const [firNumber, setFirNumber] = useState("");
   const [sections, setSections] = useState("");
   const [selectedJudgeId, setSelectedJudgeId] = useState("");
-  const [firAttachments, setFirAttachments] = useState<FileList | null>(null);
   
   // Evidence form state
   const [showEvidenceForm, setShowEvidenceForm] = useState(false);
@@ -311,6 +311,28 @@ export const PoliceComplaintDetail = () => {
     }
   };
 
+  const handleDownloadAttachment = (ipfsHash: string, fileName: string) => {
+    try {
+      // Construct the IPFS URL using helper function
+      const ipfsUrl = getIPFSUrl(ipfsHash);
+      
+      // Open in new tab for download
+      window.open(ipfsUrl, '_blank');
+      
+      toast({
+        title: "Download Started",
+        description: `Opening ${fileName}`,
+      });
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      toast({
+        title: "Download Error",
+        description: "Failed to open the file",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleCreateFIR = async () => {
     if (!firNumber.trim() || !sections.trim()) {
       toast({
@@ -336,12 +358,6 @@ export const PoliceComplaintDetail = () => {
       
       // Accused persons are already managed in the complaint detail view
       // No need to include them again in FIR creation
-      
-      if (firAttachments) {
-        Array.from(firAttachments).forEach(file => {
-          formData.append('attachments', file);
-        });
-      }
 
       const response = await api.post(`/police/complaints/${complaintId}/fir`, formData, {
         headers: {
@@ -519,10 +535,10 @@ export const PoliceComplaintDetail = () => {
             <div className="flex gap-2">
               {complaint.status === 'UNDER_INVESTIGATION' && (
                 <>
-                  <Button onClick={() => setShowEvidenceForm(true)} variant="outline">
+                  {/* <Button onClick={() => setShowEvidenceForm(true)} variant="outline">
                     <Plus className="h-4 w-4 mr-2" />
                     Add Evidence
-                  </Button>
+                  </Button> */}
                   <Button onClick={() => setShowFIRForm(true)}>
                     <Scale className="h-4 w-4 mr-2" />
                     Register FIR
@@ -775,7 +791,11 @@ export const PoliceComplaintDetail = () => {
                               </p>
                             </div>
                           </div>
-                          <Button variant="outline" size="sm">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleDownloadAttachment(attachment.ipfsHash, attachment.fileName)}
+                          >
                             <Download className="h-4 w-4 mr-2" />
                             Download
                           </Button>
@@ -783,6 +803,14 @@ export const PoliceComplaintDetail = () => {
                       ))}
                     </div>
                   </CardContent>
+                  {complaint.status === 'UNDER_INVESTIGATION' && (
+                    <div className="px-6 pb-6">
+                      <Button onClick={() => setShowEvidenceForm(true)} variant="outline" className="w-full">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Evidence
+                      </Button>
+                    </div>
+                  )}
                 </Card>
               )}
             </div>
@@ -1023,16 +1051,6 @@ export const PoliceComplaintDetail = () => {
                       </div>
                     )}
                   
-                  <div>
-                    <Label htmlFor="firAttachments">Attachments (Optional)</Label>
-                    <Input
-                      id="firAttachments"
-                      type="file"
-                      multiple
-                      onChange={(e) => setFirAttachments(e.target.files)}
-                      className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:bg-primary file:text-primary-foreground"
-                    />
-                  </div>
                 </CardContent>
                 <div className="flex justify-end gap-2 p-6 pt-0">
                   <Button variant="outline" onClick={() => setShowFIRForm(false)}>

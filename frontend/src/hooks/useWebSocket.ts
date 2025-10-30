@@ -55,13 +55,16 @@ export const useWebSocket = (): UseWebSocketReturn => {
     }
 
     // Create new socket connection
-    // In development, use the Vite dev server (with proxy) as base URL
-    // In production, use the current host or fallback to backend port
-    const socketUrl = import.meta.env.VITE_API_BASE_URL || 
+    // In development, connect directly to backend server (Vite proxy doesn't handle WebSocket)
+    // In production, use the current host or environment variable
+    const socketUrl = import.meta.env.VITE_WS_URL || 
+      import.meta.env.VITE_API_BASE_URL || 
       (import.meta.env.DEV ? 
-        `${window.location.protocol}//${window.location.host}` : 
+        'http://localhost:3001' : 
         (typeof window !== 'undefined' ? window.location.protocol + '//' + window.location.host : 'http://localhost:3001')
       );
+    
+    console.log('🔌 Connecting to WebSocket server:', socketUrl);
     
     const socket = io(socketUrl, {
       auth: {

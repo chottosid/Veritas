@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Layout } from "@/components/layout/Layout";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
+import { getIPFSUrl } from "@/config/api";
 import { 
   Scale, 
   Calendar, 
@@ -157,7 +158,7 @@ export const CaseDetail = () => {
         
         if (passedCaseData) {
           setCaseDetail(passedCaseData);
-          // Fetch proceedings if needed
+          // Fetch proceedings
           fetchProceedings();
         } else if (caseId && user?.role === 'JUDGE') {
           // For judges, fetch case details directly from API
@@ -172,6 +173,8 @@ export const CaseDetail = () => {
               }))
             });
             setCaseDetail(response.data.data);
+            // Fetch proceedings for judge
+            fetchProceedings();
           } else {
             setError("Failed to fetch case details");
           }
@@ -181,6 +184,8 @@ export const CaseDetail = () => {
             const response = await api.get(`/citizens/cases/${caseId}`);
             if (response.data.success) {
               setCaseDetail(response.data.data);
+              // Fetch proceedings for citizen
+              fetchProceedings();
             } else {
               setError("Failed to fetch case details");
             }
@@ -207,6 +212,8 @@ export const CaseDetail = () => {
                 }))
               });
               setCaseDetail(response.data.data);
+              // Fetch proceedings for lawyer
+              fetchProceedings();
             } else {
               setError("Failed to fetch case details");
             }
@@ -238,9 +245,20 @@ export const CaseDetail = () => {
     try {
       setProceedingsLoading(true);
       
-      const response = await api.get(`/citizens/cases/${caseId}/proceedings`);
+      // Use the appropriate API endpoint based on user role
+      let endpoint = '';
+      if (user?.role === 'JUDGE') {
+        endpoint = `/judges/cases/${caseId}/proceedings`;
+      } else if (user?.role === 'LAWYER') {
+        endpoint = `/lawyers/cases/${caseId}/proceedings`;
+      } else {
+        endpoint = `/citizens/cases/${caseId}/proceedings`;
+      }
+      
+      const response = await api.get(endpoint);
       
       if (response.data.success) {
+        console.log('Case proceedings received:', response.data.data);
         setProceedings(response.data.data);
       }
     } catch (err: any) {
@@ -671,7 +689,12 @@ export const CaseDetail = () => {
                                 <div className="mt-2">
                                   <p className="text-xs text-muted-foreground mb-1">Attachments:</p>
                                   {proceeding.attachments.map((attachment, idx) => (
-                                    <Badge key={idx} variant="secondary" className="text-xs mr-1">
+                                    <Badge 
+                                      key={idx} 
+                                      variant="secondary" 
+                                      className="text-xs mr-1 cursor-pointer hover:bg-secondary/80 transition-colors"
+                                      onClick={() => window.open(getIPFSUrl(attachment.ipfsHash), '_blank')}
+                                    >
                                       {attachment.fileName}
                                     </Badge>
                                   ))}
@@ -703,66 +726,135 @@ export const CaseDetail = () => {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {caseDetail.allDocuments && caseDetail.allDocuments.length > 0 ? (
+                    {proceedingsLoading ? (
                       <div className="space-y-4">
-                        {caseDetail.allDocuments.map((document, index) => (
-                          <div key={`${document.ipfsHash}-${document.documentSource}-${index}`} className="p-4 rounded-lg border bg-muted/30">
-                            <div className="flex items-start justify-between">
-                              <div className="flex items-start gap-3 flex-1">
-                                <FileText className="h-5 w-5 text-primary mt-1" />
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <h4 className="font-medium">{document.fileName}</h4>
-                                    <Badge variant="outline" className="text-xs">
-                                      {document.documentSource}
-                                    </Badge>
-                                    <Badge variant="secondary" className="text-xs">
-                                      {document.createdByRole}
-                                    </Badge>
-                                  </div>
-                                  
-                                  <p className="text-sm text-muted-foreground mb-2">
-                                    {document.proceedingDescription}
-                                  </p>
-                                  
-                                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                    <span>Size: {(document.fileSize / 1024 / 1024).toFixed(2)} MB</span>
-                                    <span>Uploaded: {formatDateTime(document.uploadedAt)}</span>
-                                  </div>
-                                </div>
-                              </div>
-                              
-                              <div className="flex gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => window.open(`https://gateway.pinata.cloud/ipfs/${document.ipfsHash}`, '_blank')}
-                                >
-                                  View
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    const link = document.createElement('a');
-                                    link.href = `https://gateway.pinata.cloud/ipfs/${document.ipfsHash}`;
-                                    link.download = document.fileName;
-                                    link.click();
-                                  }}
-                                >
-                                  Download
-                                </Button>
+                        {[...Array(3)].map((_, index) => (
+                          <div key={index} className="p-4 rounded-lg border bg-muted/30">
+                            <div className="flex items-start gap-3">
+                              <Skeleton className="h-5 w-5" />
+                              <div className="space-y-2 flex-1">
+                                <Skeleton className="h-4 w-3/4" />
+                                <Skeleton className="h-3 w-1/2" />
+                                <Skeleton className="h-3 w-2/3" />
                               </div>
                             </div>
                           </div>
                         ))}
                       </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                        <p className="text-muted-foreground">No documents available for this case</p>
-                      </div>
-                    )}
+                    ) : (() => {
+                      // Combine documents from both allDocuments and proceedings
+                      const allDocs = [];
+                      const seenKeys = new Set(); // Use combination of ipfsHash + fileName for uniqueness
+                      
+                      // Add documents from proceedings first (these are the most complete)
+                      if (proceedings && proceedings.length > 0) {
+                        proceedings.forEach(proceeding => {
+                          if (proceeding.attachments && proceeding.attachments.length > 0) {
+                            proceeding.attachments.forEach(attachment => {
+                              const uniqueKey = `${attachment.ipfsHash}-${attachment.fileName}`;
+                              if (!seenKeys.has(uniqueKey)) {
+                                seenKeys.add(uniqueKey);
+                                allDocs.push({
+                                  fileName: attachment.fileName,
+                                  ipfsHash: attachment.ipfsHash,
+                                  fileSize: 0, // Not available from proceedings
+                                  source: 'proceeding',
+                                  type: proceeding.type.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase()),
+                                  description: proceeding.description,
+                                  role: proceeding.createdByRole,
+                                  date: proceeding.createdAt
+                                });
+                              }
+                            });
+                          }
+                        });
+                      }
+                      
+                      // Add documents from allDocuments (only if not already added)
+                      if (caseDetail.allDocuments && caseDetail.allDocuments.length > 0) {
+                        caseDetail.allDocuments.forEach(doc => {
+                          const uniqueKey = `${doc.ipfsHash}-${doc.fileName}`;
+                          if (!seenKeys.has(uniqueKey)) {
+                            seenKeys.add(uniqueKey);
+                            allDocs.push({
+                              ...doc,
+                              source: 'case',
+                              type: doc.proceedingType || doc.documentSource,
+                              description: doc.proceedingDescription || '',
+                              role: doc.createdByRole || '',
+                              date: doc.uploadedAt || doc.createdAt
+                            });
+                          }
+                        });
+                      }
+                      
+                      // Sort by date (newest first)
+                      allDocs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+                      
+                      return allDocs.length > 0 ? (
+                        <div className="space-y-4">
+                          {allDocs.map((document, index) => (
+                            <div key={`${document.ipfsHash}-${document.source}-${index}`} className="p-4 rounded-lg border bg-muted/30">
+                              <div className="flex items-start justify-between">
+                                <div className="flex items-start gap-3 flex-1">
+                                  <FileText className="h-5 w-5 text-primary mt-1" />
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <h4 className="font-medium">{document.fileName}</h4>
+                                      <Badge variant="outline" className="text-xs">
+                                        {document.type}
+                                      </Badge>
+                                      {document.role && (
+                                        <Badge variant="secondary" className="text-xs">
+                                          {document.role}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    
+                                    {document.description && (
+                                      <p className="text-sm text-muted-foreground mb-2">
+                                        {document.description}
+                                      </p>
+                                    )}
+                                    
+                                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                      {document.fileSize > 0 && (
+                                        <span>Size: {(document.fileSize / 1024 / 1024).toFixed(2)} MB</span>
+                                      )}
+                                      <span>Uploaded: {formatDateTime(document.date)}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      const url = getIPFSUrl(document.ipfsHash);
+                                      const link = window.document.createElement('a');
+                                      link.href = url;
+                                      link.download = document.fileName;
+                                      link.target = '_blank';
+                                      window.document.body.appendChild(link);
+                                      link.click();
+                                      window.document.body.removeChild(link);
+                                    }}
+                                  >
+                                    Download
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                          <p className="text-muted-foreground">No documents available for this case</p>
+                        </div>
+                      );
+                    })()}
                   </CardContent>
                 </Card>
               </TabsContent>

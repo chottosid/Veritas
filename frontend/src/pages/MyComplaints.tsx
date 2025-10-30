@@ -24,6 +24,7 @@ import { Layout } from '@/components/layout/Layout';
 import { useAuthStore } from '@/store/authStore';
 import { useToast } from '@/hooks/use-toast';
 import api, { isAuthenticated } from '@/lib/api';
+import { getIPFSUrl } from '@/config/api';
 import debugAPI from '@/lib/debug';
 
 interface Attachment {
@@ -196,11 +197,22 @@ export const MyComplaints = () => {
   };
 
   const downloadAttachment = (attachment: Attachment) => {
-    // Implement IPFS download logic here
-    toast({
-      title: "Download",
-      description: `Downloading ${attachment.fileName}...`,
-    });
+    try {
+      const ipfsUrl = getIPFSUrl(attachment.ipfsHash);
+      window.open(ipfsUrl, '_blank');
+      
+      toast({
+        title: "Download Started",
+        description: `Opening ${attachment.fileName}`,
+      });
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      toast({
+        title: "Download Error",
+        description: "Failed to open the file",
+        variant: "destructive",
+      });
+    }
   };
 
   if (isLoading) {

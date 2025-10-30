@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,11 +12,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Layout } from '@/components/layout/Layout';
 import { useAuthStore } from '@/store/authStore';
 import { useToast } from '@/hooks/use-toast';
 import api from '@/lib/api';
 import { API_CONFIG } from '@/config/api';
+import { cn } from '@/lib/utils';
 import { 
   Scale, 
   Search, 
@@ -33,6 +37,7 @@ import {
   Upload,
   UserPlus,
   Settings,
+  CalendarIcon,
   Save
 } from 'lucide-react';
 
@@ -126,7 +131,8 @@ export const JudgeCases = () => {
   const [selectedCase, setSelectedCase] = useState<Case | null>(null);
   const [isSchedulingHearing, setIsSchedulingHearing] = useState(false);
   const [isClosingCase, setIsClosingCase] = useState(false);
-  const [hearingDate, setHearingDate] = useState('');
+  const [hearingDate, setHearingDate] = useState<Date | undefined>(undefined);
+  const [hearingTime, setHearingTime] = useState('09:00');
   const [verdict, setVerdict] = useState('');
 
   // New state for accused person form
@@ -194,23 +200,38 @@ export const JudgeCases = () => {
     try {
       setIsSchedulingHearing(true);
       
+      if (!hearingDate) {
+        toast({
+          title: 'Error',
+          description: 'Please select a hearing date',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      // Combine date and time
+      const [hours, minutes] = hearingTime.split(':').map(Number);
+      const combinedDateTime = new Date(hearingDate);
+      combinedDateTime.setHours(hours, minutes, 0, 0);
+      
       const response = await api.post(`/judges/cases/${caseId}/hearing`, {
-        hearingDate: new Date(hearingDate).toISOString()
+        hearingDate: combinedDateTime.toISOString()
       });
       
       if (response.data.success) {
         toast({
           title: 'Hearing Scheduled',
-          description: `Hearing has been scheduled for ${new Date(hearingDate).toLocaleDateString()}`,
+          description: `Hearing has been scheduled for ${format(combinedDateTime, 'PPP p')}`,
         });
         
         // Update the case in the list
         setCases(prev => prev.map(case_ => 
           case_._id === caseId 
-            ? { ...case_, hearingDates: [...case_.hearingDates, hearingDate] }
+            ? { ...case_, hearingDates: [...case_.hearingDates, combinedDateTime.toISOString()] }
             : case_
         ));
-        setHearingDate('');
+        setHearingDate(undefined);
+        setHearingTime('09:00');
         setSelectedCase(null);
       } else {
         throw new Error(response.data.message || 'Failed to schedule hearing');
@@ -492,14 +513,20 @@ export const JudgeCases = () => {
       // 3. Schedule hearing if needed
       if (hearingDate) {
         try {
+          // Combine date and time
+          const [hours, minutes] = hearingTime.split(':').map(Number);
+          const combinedDateTime = new Date(hearingDate);
+          combinedDateTime.setHours(hours, minutes, 0, 0);
+          
           const response = await api.post(`/judges/cases/${caseId}/hearing`, {
-            hearingDate: new Date(hearingDate).toISOString()
+            hearingDate: combinedDateTime.toISOString()
           });
           
           results.push('✅ Hearing scheduled successfully');
           
           // Reset hearing form
-          setHearingDate('');
+          setHearingDate(undefined);
+          setHearingTime('09:00');
         } catch (error) {
           results.push('❌ Failed to schedule hearing');
         }
@@ -957,130 +984,9 @@ export const JudgeCases = () => {
 
                                <Separator />
 
-                               {/* All Documents */}
-                               <div className="space-y-4">
-                                 <div className="flex items-center justify-between">
-                                   <h4 className="font-semibold flex items-center gap-2">
-                                     <FileText className="h-4 w-4" />
-                                     All Case Documents
-                                   </h4>
-                                   {selectedCase.allDocuments && selectedCase.allDocuments.length > 0 && (
-                                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                       <span>Total: {selectedCase.allDocuments.length} document{selectedCase.allDocuments.length !== 1 ? 's' : ''}</span>
-                                       <span>•</span>
-                                       <span>Complaint: {selectedCase.allDocuments.filter(doc => doc.documentSource === 'COMPLAINT').length}</span>
-                                       <span>•</span>
-                                       <span>FIR: {selectedCase.allDocuments.filter(doc => doc.documentSource === 'FIR').length}</span>
-                                       <span>•</span>
-                                       <span>Case: {selectedCase.allDocuments.filter(doc => doc.documentSource === 'CASE_PROCEEDING').length}</span>
-                                     </div>
-                                   )}
-                                 </div>
-                                                                   {selectedCase.allDocuments && selectedCase.allDocuments.length > 0 ? (
-                                    <div className="space-y-3">
-                                      {/* Document Timeline Header */}
-                                      <div className="p-3 bg-muted/20 rounded-lg border-l-4 border-primary">
-                                        <div className="flex items-center gap-2 text-sm font-medium">
-                                          <FileText className="h-4 w-4" />
-                                          Document Timeline
-                                        </div>
-                                        <p className="text-xs text-muted-foreground mt-1">
-                                          Documents accumulate throughout the case lifecycle: Complaint → FIR → Case Proceedings
-                                        </p>
-                                      </div>
-                                      
-                                      {selectedCase.allDocuments.map((document, index) => (
-                                       <div key={index} className="p-4 border rounded-lg bg-muted/30">
-                                         <div className="flex items-start justify-between mb-2">
-                                           <div className="flex items-center gap-2">
-                                             <FileText className="h-4 w-4 text-muted-foreground" />
-                                             <span className="font-medium">{document.fileName}</span>
-                                             <Badge variant="outline" className="text-xs">
-                                               {document.documentSource}
-                                             </Badge>
-                                             <Badge 
-                                               variant={document.createdByRole === 'JUDGE' ? 'default' : 
-                                                       document.createdByRole === 'POLICE' ? 'secondary' : 
-                                                       document.createdByRole === 'CITIZEN' ? 'outline' : 'secondary'}
-                                               className="text-xs"
-                                             >
-                                               {document.createdByRole}
-                                             </Badge>
-                                           </div>
-                                           <span className="text-xs text-muted-foreground">
-                                             {formatDate(document.createdAt)}
-                                           </span>
-                                         </div>
-                                         <div className="space-y-2 text-sm">
-                                                                                       <div>
-                                              <span className="text-muted-foreground">Type:</span>
-                                              <span className="ml-1 font-medium">{document.proceedingType.replace(/_/g, ' ')}</span>
-                                            </div>
-                                            <div>
-                                              <span className="text-muted-foreground">Description:</span>
-                                              <span className="ml-1">{document.proceedingDescription}</span>
-                                            </div>
-                                            <div>
-                                              <span className="text-muted-foreground">Stage:</span>
-                                              <span className="ml-1 font-medium">
-                                                {document.documentSource === 'COMPLAINT' ? 'Initial Filing' :
-                                                 document.documentSource === 'FIR' ? 'Police Investigation' :
-                                                 document.documentSource === 'CASE_PROCEEDING' ? 'Court Proceedings' : 'Unknown'}
-                                              </span>
-                                            </div>
-                                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                             <span>Size: {formatFileSize(document.fileSize)}</span>
-                                             <span>IPFS: {document.ipfsHash.substring(0, 10)}...</span>
-                                           </div>
-                                         </div>
-                                         <div className="mt-3 pt-2 border-t">
-                                           <Button 
-                                             variant="outline" 
-                                             size="sm"
-                                             onClick={() => window.open(`https://gateway.pinata.cloud/ipfs/${document.ipfsHash}`, '_blank')}
-                                             className="text-xs"
-                                           >
-                                             <FileText className="h-3 w-3 mr-1" />
-                                             View Document
-                                           </Button>
-                                         </div>
-                                       </div>
-                                     ))}
-                                   </div>
-                                 ) : (
-                                   <p className="text-sm text-muted-foreground">No documents attached to this case yet.</p>
-                                 )}
-                               </div>
-
-                               <Separator />
-
-                               {/* Hearing Dates */}
-                              <div className="space-y-4">
-                                <h4 className="font-semibold flex items-center gap-2">
-                                  <Calendar className="h-4 w-4" />
-                                  Hearing Schedule
-                                </h4>
-                                {selectedCase.hearingDates.length > 0 ? (
-                                  <div className="space-y-2">
-                                    {selectedCase.hearingDates.map((date, index) => (
-                                      <div key={index} className="flex items-center gap-2 text-sm p-2 border rounded">
-                                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                                        <span className="font-medium">{formatDate(date)}</span>
-                                        <Badge variant="outline" className="ml-auto">
-                                          {index === 0 ? 'Next' : `Hearing ${index + 1}`}
-                                        </Badge>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <p className="text-sm text-muted-foreground">No hearings scheduled yet</p>
-                                )}
-                              </div>
-
-                              {/* Verdict */}
+                               {/* Verdict */}
                               {selectedCase.verdict && (
                                 <>
-                                  <Separator />
                                   <div className="space-y-4">
                                     <h4 className="font-semibold flex items-center gap-2">
                                       <CheckCircle className="h-4 w-4" />
@@ -1090,10 +996,9 @@ export const JudgeCases = () => {
                                       <p className="text-sm leading-relaxed">{selectedCase.verdict}</p>
                                     </div>
                                   </div>
+                                  <Separator />
                                 </>
                               )}
-
-                              <Separator />
 
                               {/* Actions */}
                               {selectedCase.status !== 'CLOSED' && (
@@ -1261,14 +1166,42 @@ export const JudgeCases = () => {
                                         <Calendar className="h-4 w-4" />
                                         3. Schedule Hearing
                                       </h5>
-                                      <div>
-                                        <Label htmlFor="hearingDate">Hearing Date & Time</Label>
-                                        <Input
-                                          id="hearingDate"
-                                          type="datetime-local"
-                                          value={hearingDate}
-                                          onChange={(e) => setHearingDate(e.target.value)}
-                                        />
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                          <Label>Hearing Date</Label>
+                                          <Popover>
+                                            <PopoverTrigger asChild>
+                                              <Button
+                                                variant="outline"
+                                                className={cn(
+                                                  "w-full justify-start text-left font-normal",
+                                                  !hearingDate && "text-muted-foreground"
+                                                )}
+                                              >
+                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                {hearingDate ? format(hearingDate, "PPP") : "Pick a date"}
+                                              </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                              <CalendarComponent
+                                                mode="single"
+                                                selected={hearingDate}
+                                                onSelect={setHearingDate}
+                                                disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                                                initialFocus
+                                              />
+                                            </PopoverContent>
+                                          </Popover>
+                                        </div>
+                                        <div>
+                                          <Label htmlFor="hearingTime">Hearing Time</Label>
+                                          <Input
+                                            id="hearingTime"
+                                            type="time"
+                                            value={hearingTime}
+                                            onChange={(e) => setHearingTime(e.target.value)}
+                                          />
+                                        </div>
                                       </div>
                                     </div>
 
